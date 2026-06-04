@@ -1,0 +1,93 @@
+import { BarChart3, List, Plane } from 'lucide-react';
+import { FlightsPerYearChart } from '../../charts/FlightsPerYearChart';
+import { TopRoutesList } from '../../charts/TopRoutesList';
+import { FlightLog } from '../../pages/FlightLog';
+import type { Flight } from '../../types/flight';
+import type { FlightStats } from '../../utils/flightStats';
+import { formatMiles, formatNumber } from '../../utils/format';
+import { StatCard } from '../composed/StatCard';
+import { Button } from '../primitives/Button';
+import { PillToggle } from '../primitives/PillToggle';
+
+export type SidebarView = 'stats' | 'log';
+
+interface SidebarProps {
+  activeFlightId?: string | null;
+  flights: Flight[];
+  onDeleteFlight: (id: string) => void;
+  onSelectFlight: (id: string | null) => void;
+  onViewChange: (view: SidebarView) => void;
+  stats: FlightStats;
+  view: SidebarView;
+}
+
+const viewOptions = [
+  { label: 'Stats', value: 'stats' },
+  { label: 'Log', value: 'log' },
+] satisfies Array<{ label: string; value: SidebarView }>;
+
+export function Sidebar({
+  activeFlightId,
+  flights,
+  onDeleteFlight,
+  onSelectFlight,
+  onViewChange,
+  stats,
+  view,
+}: SidebarProps) {
+  return (
+    <aside className="flex h-screen min-h-0 w-[clamp(var(--sidebar-min-width),30vw,var(--sidebar-max-width))] flex-col border-l border-[var(--color-border-default)] bg-[var(--color-bg-surface)]">
+      <header className="grid gap-[var(--space-lg)] border-b border-[var(--color-border-default)] p-[var(--space-lg)]">
+        <div className="flex items-start justify-between gap-[var(--space-md)]">
+          <div>
+            <p className="label-text text-[var(--color-accent-teal)]">Layover</p>
+            <h1 className="text-display text-[var(--color-text-primary)]">Travel Atlas</h1>
+          </div>
+        </div>
+        <PillToggle label="View" onChange={onViewChange} options={viewOptions} value={view} />
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-y-auto p-[var(--space-lg)]">
+        {view === 'stats' ? (
+          <div className="grid gap-[var(--space-lg)]">
+            <div className="grid grid-cols-2 gap-[var(--space-sm)]">
+              <StatCard
+                accent={<Plane aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />}
+                label="Flights"
+                value={formatNumber(stats.totalFlights)}
+              />
+              <StatCard label="Miles" value={formatMiles(stats.totalMiles)} />
+              <StatCard label="Countries" value={formatNumber(stats.countries)} />
+              <StatCard label="Hours" value={formatNumber(stats.timeInAirHours)} />
+              <StatCard label="Airports" value={formatNumber(stats.airports)} />
+              <StatCard label="Years" value={formatNumber(stats.yearsFlying)} />
+            </div>
+
+            <section className="grid gap-[var(--space-sm)]">
+              <h2 className="flex items-center gap-[var(--space-sm)] text-heading-sm text-[var(--color-text-primary)]">
+                <BarChart3 aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />
+                Flights per year
+              </h2>
+              <FlightsPerYearChart data={stats.flightsPerYear} />
+            </section>
+
+            <section className="grid gap-[var(--space-sm)]">
+              <h2 className="flex items-center gap-[var(--space-sm)] text-heading-sm text-[var(--color-text-primary)]">
+                <List aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />
+                Top routes
+              </h2>
+              <TopRoutesList routes={stats.topRoutes} />
+            </section>
+          </div>
+        ) : (
+          <FlightLog
+            flights={flights}
+            onDeleteFlight={onDeleteFlight}
+            onSelectFlight={(id) => onSelectFlight(id)}
+            selectedFlightId={activeFlightId}
+          />
+        )}
+      </div>
+    </aside>
+  );
+}

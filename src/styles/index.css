@@ -1,0 +1,59 @@
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--font-body-size);
+    line-height: var(--font-body-line-height);
+    font-weight: var(--font-body-weight);
+    overflow: hidden;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    color: inherit;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent-blue) 48%, transparent);
+    color: var(--color-text-primary);
+  }
+}
+
+@layer utilities {
+  .label-text {
+    font-size: var(--font-label-size);
+    line-height: var(--font-label-line-height);
+    font-weight: var(--font-label-weight);
+    letter-spacing: var(--font-label-letter-spacing);
+    text-transform: uppercase;
+  }
+
+  .panel-shadow {
+    box-shadow: var(--panel-shadow);
+  }
+}
