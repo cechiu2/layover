@@ -188,7 +188,7 @@ export function GlobeCanvas({
     <section className="relative h-screen min-w-0 flex-1 overflow-hidden bg-[var(--color-bg-base)]">
       <img
         alt="Layover"
-        className="pointer-events-none absolute left-[var(--space-xl)] top-[var(--space-lg)] z-10 w-[min(var(--dashboard-logo-width),34vw)]"
+        className="pointer-events-none absolute left-[var(--space-md)] top-[var(--space-md)] z-10 w-[min(255px,16.5vw)]"
         src="/layover-logo-transparent.png"
       />
       <div className="pointer-events-none absolute left-[var(--space-xl)] top-[32vh] z-20">

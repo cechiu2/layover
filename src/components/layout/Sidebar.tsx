@@ -6,7 +6,6 @@ import type { Flight } from '../../types/flight';
 import type { FlightStats } from '../../utils/flightStats';
 import { formatMiles, formatNumber } from '../../utils/format';
 import { StatCard } from '../composed/StatCard';
-import { Button } from '../primitives/Button';
 import { PillToggle } from '../primitives/PillToggle';
 
 export type SidebarView = 'stats' | 'log';
@@ -23,7 +22,7 @@ interface SidebarProps {
 
 const viewOptions = [
   { label: 'Stats', value: 'stats' },
-  { label: 'Log', value: 'log' },
+  { label: 'Flight Log', value: 'log' },
 ] satisfies Array<{ label: string; value: SidebarView }>;
 
 export function Sidebar({
@@ -53,14 +52,14 @@ export function Sidebar({
             <div className="grid grid-cols-2 gap-[var(--space-sm)]">
               <StatCard
                 accent={<Plane aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />}
-                label="Flights"
+                label="Flights flown"
                 value={formatNumber(stats.totalFlights)}
               />
-              <StatCard label="Miles" value={formatMiles(stats.totalMiles)} />
-              <StatCard label="Countries" value={formatNumber(stats.countries)} />
-              <StatCard label="Hours" value={formatNumber(stats.timeInAirHours)} />
-              <StatCard label="Airports" value={formatNumber(stats.airports)} />
-              <StatCard label="Years" value={formatNumber(stats.yearsFlying)} />
+              <StatCard label="Miles flown" value={formatMiles(stats.totalMiles)} />
+              <StatCard label="Countries visited" value={formatNumber(stats.countries)} />
+              <StatCard label="Hours spent flying" value={formatNumber(stats.timeInAirHours)} />
+              <StatCard label="Hours spent laid over" value={formatNumber(stats.layoverHours)} />
+              <StatCard label="Airports visited" value={formatNumber(stats.airports)} />
             </div>
 
             <section className="grid gap-[var(--space-sm)]">

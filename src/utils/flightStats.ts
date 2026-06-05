@@ -19,6 +19,7 @@ export interface FlightStats {
   totalMiles: number;
   countries: number;
   timeInAirHours: number;
+  layoverHours: number;
   airports: number;
   yearsFlying: number;
   flightsPerYear: FlightsPerYear[];
@@ -31,6 +32,7 @@ function getYear(date: string): string {
 
 export function calculateFlightStats(flights: Flight[]): FlightStats {
   const totalMiles = flights.reduce((sum, flight) => sum + (flight.distanceMiles ?? 0), 0);
+  const totalLayoverMinutes = flights.reduce((sum, flight) => sum + (flight.layoverMinutes ?? 0), 0);
   const countries = new Set<string>();
   const airports = new Map<string, Airport>();
   const years = new Map<string, number>();
@@ -67,6 +69,7 @@ export function calculateFlightStats(flights: Flight[]): FlightStats {
     totalMiles,
     countries: countries.size,
     timeInAirHours: Math.round(totalMiles / 500),
+    layoverHours: Math.round(totalLayoverMinutes / 60),
     airports: airports.size,
     yearsFlying: years.size,
     flightsPerYear: Array.from(years.entries())

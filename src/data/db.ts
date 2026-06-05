@@ -38,6 +38,20 @@ export async function saveFlight(input: FlightInput): Promise<string> {
   return flight.id;
 }
 
+export async function saveTrip(inputs: FlightInput[]): Promise<string[]> {
+  const tripId = crypto.randomUUID();
+  const flights = inputs.map((input, index) =>
+    createFlight({
+      ...input,
+      tripId,
+      legIndex: index,
+    }),
+  );
+
+  await db.flights.bulkPut(flights);
+  return flights.map((flight) => flight.id);
+}
+
 export async function saveFlights(inputs: FlightInput[]): Promise<string[]> {
   const flights = inputs.map(createFlight);
   await db.flights.bulkPut(flights);

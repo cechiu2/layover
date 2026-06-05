@@ -4,6 +4,8 @@ export type SeatClass = 'economy' | 'premium_economy' | 'business' | 'first';
 
 export interface Flight {
   id: string;
+  tripId?: string;
+  legIndex?: number;
   origin: Airport;
   destination: Airport;
   date: string;
@@ -14,6 +16,7 @@ export interface Flight {
   departureTime?: string;
   arrivalTime?: string;
   flightDuration?: string;
+  layoverMinutes?: number;
   distanceMiles?: number;
 }
 

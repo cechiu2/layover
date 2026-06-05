@@ -3,7 +3,7 @@ import { AddFlightPanel } from '../features/addFlight/AddFlightPanel';
 import { GlobeCanvas } from '../globe/GlobeCanvas';
 import { Sidebar, type SidebarView } from '../components/layout/Sidebar';
 import { SlideOver } from '../components/layout/SlideOver';
-import { deleteFlight, saveFlight, saveFlights } from '../data/db';
+import { deleteFlight, saveFlights, saveTrip } from '../data/db';
 import type { Flight, FlightInput } from '../types/flight';
 import { calculateFlightStats } from '../utils/flightStats';
 
@@ -25,8 +25,8 @@ export function Dashboard({ flights }: DashboardProps) {
     [activeFlightId, flights],
   );
 
-  async function handleSaveFlight(flight: FlightInput) {
-    await saveFlight(flight);
+  async function handleSaveTrip(flightsToSave: FlightInput[]) {
+    await saveTrip(flightsToSave);
     setActivePanel(null);
   }
 
@@ -68,7 +68,7 @@ export function Dashboard({ flights }: DashboardProps) {
       />
 
       <SlideOver isOpen={activePanel === 'add'} onClose={() => setActivePanel(null)} title="Add trip" variant="modal">
-        <AddFlightPanel onCancel={() => setActivePanel(null)} onImport={handleImportFlights} onSave={handleSaveFlight} />
+        <AddFlightPanel onCancel={() => setActivePanel(null)} onImport={handleImportFlights} onSave={handleSaveTrip} />
       </SlideOver>
     </main>
   );

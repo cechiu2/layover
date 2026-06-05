@@ -11,7 +11,7 @@ export function AutocompleteDropdown({ onSelect, results }: AutocompleteDropdown
   }
 
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+var(--space-xs))] z-20 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)]">
+    <div className="absolute left-0 right-0 top-[calc(100%+var(--space-xs))] z-20 max-h-[240px] overflow-y-auto rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)]">
       {results.map((airport) => (
         <button
           className="grid w-full gap-[var(--space-xs)] px-[var(--space-md)] py-[var(--space-sm)] text-left transition hover:bg-[var(--color-bg-surface)]"
