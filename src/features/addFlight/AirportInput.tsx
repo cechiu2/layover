@@ -2,7 +2,7 @@ import Fuse from 'fuse.js';
 import { useEffect, useMemo, useState } from 'react';
 import { AutocompleteDropdown } from '../../components/composed/AutocompleteDropdown';
 import { Input } from '../../components/primitives/Input';
-import { airports } from '../../data/airports';
+import { getAirports, loadAirports } from '../../data/airports';
 import type { Airport } from '../../types/airport';
 
 interface AirportInputProps {
@@ -17,15 +17,20 @@ export function AirportInput({ label, onChange, placeholder = 'SFO', tone = 'dar
   const [query, setQuery] = useState(value ? value.iata : '');
   const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [isOpen, setIsOpen] = useState(false);
+  const [airportData, setAirportData] = useState(() => getAirports());
+
+  useEffect(() => {
+    loadAirports().then(() => setAirportData(getAirports()));
+  }, []);
 
   const fuse = useMemo(
     () =>
-      new Fuse(airports, {
+      new Fuse(airportData, {
         includeScore: true,
         keys: ['iata', 'city', 'name'],
         threshold: 0.35,
       }),
-    [],
+    [airportData],
   );
 
   const results = useMemo(() => {

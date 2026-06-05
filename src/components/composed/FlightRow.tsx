@@ -1,4 +1,5 @@
-import { Plane, Trash2 } from 'lucide-react';
+import Plane from 'lucide-react/dist/esm/icons/plane.js';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import type { Flight } from '../../types/flight';

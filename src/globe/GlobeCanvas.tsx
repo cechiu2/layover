@@ -1,21 +1,100 @@
-import Globe, { type GlobeInstance } from 'globe.gl';
 import { useEffect, useMemo, useRef } from 'react';
 import { Button } from '../components/primitives/Button';
 import type { Airport } from '../types/airport';
 import type { Flight } from '../types/flight';
-import { FlightDetailCard } from './FlightDetailCard';
 
-const earthNightUrl = new URL('../../node_modules/three-globe/example/img/earth-night.jpg', import.meta.url).href;
-const earthTopologyUrl = new URL('../../node_modules/three-globe/example/img/earth-topology.png', import.meta.url).href;
+const earthNightUrl = '/vendor/earth-night.jpg';
+const earthTopologyUrl = '/vendor/earth-topology.png';
+
+interface GlobeInstance {
+  _destructor?: () => void;
+  arcAltitude(value: (arc: unknown) => number): GlobeInstance;
+  arcColor(value: (arc: unknown) => string[]): GlobeInstance;
+  arcDashAnimateTime(value: number): GlobeInstance;
+  arcDashGap(value: number): GlobeInstance;
+  arcDashInitialGap(value: () => number): GlobeInstance;
+  arcDashLength(value: number): GlobeInstance;
+  arcEndLat(value: (arc: unknown) => number): GlobeInstance;
+  arcEndLng(value: (arc: unknown) => number): GlobeInstance;
+  arcStartLat(value: (arc: unknown) => number): GlobeInstance;
+  arcStartLng(value: (arc: unknown) => number): GlobeInstance;
+  arcStroke(value: (arc: unknown) => number): GlobeInstance;
+  arcsData(value: GlobeArc[]): GlobeInstance;
+  arcsTransitionDuration(value: number): GlobeInstance;
+  atmosphereAltitude(value: number): GlobeInstance;
+  atmosphereColor(value: string): GlobeInstance;
+  backgroundColor(value: string): GlobeInstance;
+  bumpImageUrl(value: string): GlobeInstance;
+  controls(): {
+    autoRotate: boolean;
+    autoRotateSpeed: number;
+    dampingFactor: number;
+    enableDamping: boolean;
+    maxDistance: number;
+    minDistance: number;
+  };
+  globeImageUrl(value: string): GlobeInstance;
+  globeMaterial(): { shininess: number };
+  height(value: number): GlobeInstance;
+  onArcClick(value: (arc: unknown) => void): GlobeInstance;
+  onArcHover(value: (arc: unknown | null) => void): GlobeInstance;
+  pointAltitude(value: number): GlobeInstance;
+  pointColor(value: (point: unknown) => string): GlobeInstance;
+  pointLat(value: (point: unknown) => number): GlobeInstance;
+  pointLng(value: (point: unknown) => number): GlobeInstance;
+  pointOfView(value: { altitude: number; lat: number; lng: number }, ms: number): GlobeInstance;
+  pointRadius(value: number): GlobeInstance;
+  pointsData(value: GlobePoint[]): GlobeInstance;
+  pointsMerge(value: boolean): GlobeInstance;
+  showAtmosphere(value: boolean): GlobeInstance;
+  width(value: number): GlobeInstance;
+}
+
+interface GlobeFactory {
+  (options: { animateIn: boolean; waitForGlobeReady: boolean }): (container: HTMLElement) => GlobeInstance;
+}
+
+declare global {
+  interface Window {
+    Globe?: GlobeFactory;
+  }
+}
+
+let globeLoadPromise: Promise<GlobeFactory> | null = null;
+
+function loadGlobe(): Promise<GlobeFactory> {
+  if (window.Globe) {
+    return Promise.resolve(window.Globe);
+  }
+
+  if (globeLoadPromise) {
+    return globeLoadPromise;
+  }
+
+  globeLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = '/vendor/globe.gl.min.js';
+    script.onload = () => {
+      if (window.Globe) {
+        resolve(window.Globe);
+      } else {
+        reject(new Error('Globe library did not initialize.'));
+      }
+    };
+    script.onerror = () => reject(new Error('Unable to load globe library.'));
+    document.head.appendChild(script);
+  });
+
+  return globeLoadPromise;
+}
 
 interface GlobeCanvasProps {
-  activeFlight: Flight | null;
   activeFlightId?: string | null;
   flights: Flight[];
   onAddTrip: () => void;
   onArcHover: (flightId: string | null) => void;
   onArcSelect: (flightId: string) => void;
-  onClearActiveFlight: () => void;
 }
 
 interface GlobeArc {
@@ -55,13 +134,11 @@ function toPoint(airport: Airport): GlobePoint {
 }
 
 export function GlobeCanvas({
-  activeFlight,
   activeFlightId,
   flights,
   onAddTrip,
   onArcHover,
   onArcSelect,
-  onClearActiveFlight,
 }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<GlobeInstance | null>(null);
@@ -95,59 +172,73 @@ export function GlobeCanvas({
       return undefined;
     }
 
-    const globe = Globe({ animateIn: false, waitForGlobeReady: true })(container);
-    const bgBase = getToken('--color-bg-base');
-    const accentBlue = getToken('--color-accent-blue');
+    let isCancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
 
-    globeRef.current = globe;
+    loadGlobe()
+      .then((Globe) => {
+        if (isCancelled) {
+          return;
+        }
 
-    globe
-      .backgroundColor(bgBase)
-      .globeImageUrl(earthNightUrl)
-      .bumpImageUrl(earthTopologyUrl)
-      .showAtmosphere(true)
-      .atmosphereColor(accentBlue)
-      .atmosphereAltitude(Number(getToken('--globe-atmosphere-altitude')))
-      .pointOfView({ lat: 28, lng: -45, altitude: 2.1 }, 0);
+        const globe = Globe({ animateIn: false, waitForGlobeReady: true })(container);
+        const bgBase = getToken('--color-bg-base');
+        const accentBlue = getToken('--color-accent-blue');
 
-    const material = globe.globeMaterial();
-    material.shininess = 0;
+        globeRef.current = globe;
 
-    globe.controls().autoRotate = true;
-    globe.controls().autoRotateSpeed = 0.35;
-    globe.controls().enableDamping = true;
-    globe.controls().dampingFactor = 0.05;
-    globe.controls().minDistance = 160;
-    globe.controls().maxDistance = 520;
+        globe
+          .backgroundColor(bgBase)
+          .globeImageUrl(earthNightUrl)
+          .bumpImageUrl(earthTopologyUrl)
+          .showAtmosphere(true)
+          .atmosphereColor(accentBlue)
+          .atmosphereAltitude(Number(getToken('--globe-atmosphere-altitude')))
+          .pointOfView({ lat: 28, lng: -45, altitude: 2.1 }, 0);
 
-    globe
-      .arcStartLat((arc) => (arc as GlobeArc).startLat)
-      .arcStartLng((arc) => (arc as GlobeArc).startLng)
-      .arcEndLat((arc) => (arc as GlobeArc).endLat)
-      .arcEndLng((arc) => (arc as GlobeArc).endLng)
-      .arcDashLength(0.42)
-      .arcDashGap(0.18)
-      .arcDashInitialGap(() => Math.random())
-      .arcDashAnimateTime(2600)
-      .arcsTransitionDuration(800)
-      .pointLat((point) => (point as GlobePoint).lat)
-      .pointLng((point) => (point as GlobePoint).lng)
-      .pointAltitude(0.012)
-      .pointRadius(0.18)
-      .pointsMerge(true)
-      .onArcClick((arc) => onArcSelectRef.current((arc as GlobeArc).id))
-      .onArcHover((arc) => onArcHoverRef.current(arc ? (arc as GlobeArc).id : null));
+        const material = globe.globeMaterial();
+        material.shininess = 0;
 
-    const resizeObserver = new ResizeObserver(([entry]) => {
-      const { height, width } = entry.contentRect;
-      globe.width(width).height(height);
-    });
+        globe.controls().autoRotate = true;
+        globe.controls().autoRotateSpeed = 0.35;
+        globe.controls().enableDamping = true;
+        globe.controls().dampingFactor = 0.05;
+        globe.controls().minDistance = 160;
+        globe.controls().maxDistance = 520;
 
-    resizeObserver.observe(container);
+        globe
+          .arcStartLat((arc) => (arc as GlobeArc).startLat)
+          .arcStartLng((arc) => (arc as GlobeArc).startLng)
+          .arcEndLat((arc) => (arc as GlobeArc).endLat)
+          .arcEndLng((arc) => (arc as GlobeArc).endLng)
+          .arcDashLength(0.42)
+          .arcDashGap(0.18)
+          .arcDashInitialGap(() => Math.random())
+          .arcDashAnimateTime(2600)
+          .arcsTransitionDuration(800)
+          .pointLat((point) => (point as GlobePoint).lat)
+          .pointLng((point) => (point as GlobePoint).lng)
+          .pointAltitude(0.012)
+          .pointRadius(0.18)
+          .pointsMerge(true)
+          .onArcClick((arc) => onArcSelectRef.current((arc as GlobeArc).id))
+          .onArcHover((arc) => onArcHoverRef.current(arc ? (arc as GlobeArc).id : null));
+
+        resizeObserver = new ResizeObserver(([entry]) => {
+          const { height, width } = entry.contentRect;
+          globe.width(width).height(height);
+        });
+
+        resizeObserver.observe(container);
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+      });
 
     return () => {
-      resizeObserver.disconnect();
-      globe._destructor?.();
+      isCancelled = true;
+      resizeObserver?.disconnect();
+      globeRef.current?._destructor?.();
       globeRef.current = null;
     };
   }, []);
@@ -192,8 +283,7 @@ export function GlobeCanvas({
         src="/layover-logo-transparent.png"
       />
       <div className="pointer-events-none absolute left-[var(--space-xl)] top-[32vh] z-20">
-        {activeFlight ? <FlightDetailCard flight={activeFlight} onClose={onClearActiveFlight} /> : null}
-        {!activeFlight && flights.length === 0 ? (
+        {flights.length === 0 ? (
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-default)] bg-[var(--empty-state-bg)] px-[var(--space-lg)] py-[var(--space-md)] text-heading-sm text-[var(--color-text-secondary)] backdrop-blur-md">
             No flights logged yet
           </div>

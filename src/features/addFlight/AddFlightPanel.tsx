@@ -1,5 +1,8 @@
-import { ArrowRight, Plus, Trash2, UploadCloud } from 'lucide-react';
-import { useState, type FormEvent, type SelectHTMLAttributes } from 'react';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right.js';
+import Plus from 'lucide-react/dist/esm/icons/plus.js';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js';
+import UploadCloud from 'lucide-react/dist/esm/icons/upload-cloud.js';
+import { useEffect, useRef, useState, type FormEvent, type SelectHTMLAttributes } from 'react';
 import { Button } from '../../components/primitives/Button';
 import { Input } from '../../components/primitives/Input';
 import { CSVImport } from '../importFlights/CSVImport';
@@ -7,6 +10,8 @@ import type { Airport } from '../../types/airport';
 import type { FlightInput, SeatClass } from '../../types/flight';
 import { cx } from '../../utils/cx';
 import { AirportInput } from './AirportInput';
+import { lookupFlight, type FlightLookupMatch } from './flightLookup';
+import { findAirportByIata } from '../../data/airports';
 
 interface AddFlightPanelProps {
   onCancel: () => void;
@@ -32,6 +37,13 @@ interface TripLegDraft {
   arrivalTime: string;
   durationHours: string;
   durationMinutes: string;
+}
+
+interface LookupState {
+  key?: string;
+  matches?: FlightLookupMatch[];
+  message?: string;
+  status: 'idle' | 'loading' | 'multiple' | 'not-found' | 'error';
 }
 
 const aircraftOptions = ['Airbus A321neo', 'Airbus A320', 'Boeing 737', 'Boeing 757', 'Boeing 787', 'Embraer 175'];
@@ -61,12 +73,15 @@ function createEmptyLeg(previousLeg?: TripLegDraft): TripLegDraft {
 }
 
 function TripSelect({ className, label, options, ...props }: TripSelectProps) {
+  const hasValue = Boolean(props.value);
+
   return (
     <label className="grid gap-[var(--space-sm)]">
       <span className="label-text text-[var(--color-accent-amber)]">{label}</span>
       <select
         className={cx(
           'h-[var(--control-height)] w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] px-[var(--space-sm)] text-body text-[var(--color-bg-base)] outline-none transition focus:border-[var(--color-accent-teal)]',
+          hasValue ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]',
           className,
         )}
         {...props}
@@ -88,6 +103,35 @@ function formatDuration(hours: string, minutes: string): string | undefined {
   }
 
   return `${parseInt(hours, 10) || 0}h ${String(parseInt(minutes, 10) || 0).padStart(2, '0')}m`;
+}
+
+function normalizeDurationHours(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 2);
+}
+
+function normalizeDurationMinutes(value: string, previousValue: string): string {
+  const minutes = value.replace(/\D/g, '').slice(0, 2);
+
+  if (Number(minutes) > 59) {
+    return previousValue;
+  }
+
+  return minutes;
+}
+
+function splitDurationMinutes(durationMinutes: number): Pick<TripLegDraft, 'durationHours' | 'durationMinutes'> {
+  return {
+    durationHours: String(Math.floor(durationMinutes / 60)),
+    durationMinutes: String(durationMinutes % 60).padStart(2, '0'),
+  };
+}
+
+function formatLookupMatch(match: FlightLookupMatch): string {
+  const route = `${match.originIata} to ${match.destinationIata}`;
+  const times = match.departureTime && match.arrivalTime ? ` - ${match.departureTime}-${match.arrivalTime}` : '';
+  const aircraft = match.aircraftType ? ` - ${match.aircraftType}` : '';
+
+  return `${route}${times}${aircraft}`;
 }
 
 function getDateTimeMinutes(date: string, time: string): number | null {
@@ -128,6 +172,8 @@ function getLayoverMinutes(previousLeg: TripLegDraft, nextLeg: TripLegDraft): nu
 export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelProps) {
   const [mode, setMode] = useState<'form' | 'import'>('form');
   const [legs, setLegs] = useState<TripLegDraft[]>(() => [createEmptyLeg()]);
+  const [lookupStates, setLookupStates] = useState<Record<string, LookupState>>({});
+  const lookupKeys = useRef<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const canSave = legs.every((leg) => leg.origin && leg.destination && leg.date);
 
@@ -142,6 +188,144 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
   function addLayoverLeg() {
     setLegs((currentLegs) => [...currentLegs, createEmptyLeg(currentLegs[currentLegs.length - 1])]);
   }
+
+  function getLookupKey(leg: TripLegDraft): string | null {
+    if (!leg.airline || !leg.flightNumber || !leg.origin || !leg.date) {
+      return null;
+    }
+
+    return `${leg.airline.trim().toUpperCase()}|${leg.flightNumber.trim()}|${leg.origin.iata}|${leg.date}`;
+  }
+
+  function applyLookupMatch(legId: string, match: FlightLookupMatch) {
+    const destination = findAirportByIata(match.destinationIata);
+
+    setLegs((currentLegs) =>
+      currentLegs.map((leg) => {
+        if (leg.id !== legId) {
+          return leg;
+        }
+
+        return {
+          ...leg,
+          aircraftType: match.aircraftType ?? leg.aircraftType,
+          airline: match.carrierCode ?? leg.airline,
+          arrivalTime: match.arrivalTime ?? leg.arrivalTime,
+          departureTime: match.departureTime ?? leg.departureTime,
+          destination: destination ?? leg.destination,
+          flightNumber: match.flightNumber ?? leg.flightNumber,
+          ...(typeof match.durationMinutes === 'number' ? splitDurationMinutes(match.durationMinutes) : {}),
+        };
+      }),
+    );
+
+    setLookupStates((currentStates) => ({
+      ...currentStates,
+      [legId]: {
+        key: currentStates[legId]?.key,
+        message: destination ? 'Flight details filled.' : `Found flight, but ${match.destinationIata} is not in the airport list.`,
+        status: destination ? 'idle' : 'error',
+      },
+    }));
+  }
+
+  useEffect(() => {
+    const timeouts: number[] = [];
+    let isCancelled = false;
+
+    legs.forEach((leg) => {
+      const key = getLookupKey(leg);
+
+      if (!key) {
+        delete lookupKeys.current[leg.id];
+        setLookupStates((currentStates) => {
+          if (!currentStates[leg.id]) {
+            return currentStates;
+          }
+
+          const nextStates = { ...currentStates };
+          delete nextStates[leg.id];
+          return nextStates;
+        });
+        return;
+      }
+
+      if (lookupKeys.current[leg.id] === key) {
+        return;
+      }
+
+      lookupKeys.current[leg.id] = key;
+
+      setLookupStates((currentStates) => ({
+        ...currentStates,
+        [leg.id]: {
+          key,
+          status: 'loading',
+        },
+      }));
+
+      const timeout = window.setTimeout(async () => {
+        try {
+          const matches = await lookupFlight({
+            carrierCode: leg.airline.trim().toUpperCase(),
+            departureDate: leg.date,
+            flightNumber: leg.flightNumber.trim(),
+            originIata: leg.origin?.iata ?? '',
+          });
+
+          if (isCancelled) {
+            return;
+          }
+
+          if (matches.length === 0) {
+            setLookupStates((currentStates) => ({
+              ...currentStates,
+              [leg.id]: {
+                key,
+                message: 'No matching flight found.',
+                status: 'not-found',
+              },
+            }));
+            return;
+          }
+
+          if (matches.length === 1) {
+            applyLookupMatch(leg.id, matches[0]);
+            return;
+          }
+
+          setLookupStates((currentStates) => ({
+            ...currentStates,
+            [leg.id]: {
+              key,
+              matches,
+              status: 'multiple',
+            },
+          }));
+        } catch (error) {
+          if (isCancelled) {
+            return;
+          }
+
+          setLookupStates((currentStates) => ({
+            ...currentStates,
+            [leg.id]: {
+              key,
+              message: error instanceof Error ? error.message : 'Flight lookup failed.',
+              status: 'error',
+            },
+          }));
+        }
+      }, 450);
+
+      timeouts.push(timeout);
+    });
+
+    return () => {
+      isCancelled = true;
+      timeouts.forEach((timeout) => window.clearTimeout(timeout));
+    };
+  }, [legs]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -197,8 +381,11 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
   return (
     <form className="grid gap-[var(--space-lg)]" onSubmit={handleSubmit}>
       <div className="grid max-h-[min(54vh,520px)] gap-[var(--space-lg)] overflow-y-auto pr-[var(--space-sm)]">
-        {legs.map((leg, index) => (
-          <section className="grid gap-[var(--space-md)]" key={leg.id}>
+        {legs.map((leg, index) => {
+          const lookupState = lookupStates[leg.id];
+
+          return (
+            <section className="grid gap-[var(--space-md)]" key={leg.id}>
             {index > 0 ? (
               <div className="grid grid-cols-[auto_1fr_auto] items-center gap-[var(--space-sm)] text-body text-[var(--color-text-primary)]">
                 <span>Next leg</span>
@@ -255,6 +442,7 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
 
             <div className="grid grid-cols-[1fr_1fr_1fr] gap-[var(--space-md)]">
               <Input
+                className={leg.date ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]'}
                 label="Date of flight"
                 onChange={(event) => updateLeg(leg.id, { date: event.currentTarget.value })}
                 onInput={(event) => updateLeg(leg.id, { date: event.currentTarget.value })}
@@ -263,6 +451,7 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
                 value={leg.date}
               />
               <Input
+                className={leg.departureTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]'}
                 label="Departure time"
                 onChange={(event) => updateLeg(leg.id, { departureTime: event.currentTarget.value })}
                 placeholder="Enter time"
@@ -271,6 +460,7 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
                 value={leg.departureTime}
               />
               <Input
+                className={leg.arrivalTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]'}
                 label="Arrival time"
                 onChange={(event) => updateLeg(leg.id, { arrivalTime: event.currentTarget.value })}
                 placeholder="Enter time"
@@ -280,31 +470,61 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
               />
             </div>
 
+            {lookupState?.status === 'loading' ? (
+              <p className="text-mono text-[var(--color-text-secondary)]">Looking up flight...</p>
+            ) : null}
+
+            {lookupState?.status === 'not-found' || lookupState?.status === 'error' ? (
+              <p className="text-mono text-[var(--color-text-secondary)]">{lookupState.message}</p>
+            ) : null}
+
+            {lookupState?.status === 'multiple' && lookupState.matches?.length ? (
+              <div className="grid gap-[var(--space-sm)]">
+                <span className="label-text text-[var(--color-accent-amber)]">Choose flight match</span>
+                <div className="grid gap-[var(--space-xs)]">
+                  {lookupState.matches.map((match) => (
+                    <button
+                      className="rounded-[var(--radius-sm)] border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] px-[var(--space-sm)] py-[var(--space-xs)] text-left text-body text-[var(--color-text-primary)] transition hover:border-[var(--color-accent-teal)]"
+                      key={match.id}
+                      onClick={() => applyLookupMatch(leg.id, match)}
+                      type="button"
+                    >
+                      {formatLookupMatch(match)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="grid grid-cols-[1fr_1fr_1fr] gap-[var(--space-md)]">
               <div className="grid gap-[var(--space-sm)]">
                 <span className="label-text text-[var(--color-accent-amber)]">Flight duration</span>
                 <div className="flex h-[var(--control-height)] overflow-hidden rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] transition focus-within:border-[var(--color-accent-teal)]">
                   <input
-                    className="w-10 bg-transparent px-[var(--space-sm)] text-body text-[var(--color-bg-base)] outline-none placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)]"
-                    max={23}
-                    min={0}
-                    onChange={(event) => updateLeg(leg.id, { durationHours: event.currentTarget.value })}
+                    className="w-16 bg-transparent px-[var(--space-sm)] text-body tabular-nums text-[var(--color-bg-base)] outline-none [appearance:textfield] placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    inputMode="numeric"
+                    maxLength={2}
+                    onChange={(event) => updateLeg(leg.id, { durationHours: normalizeDurationHours(event.currentTarget.value) })}
+                    pattern="[0-9]*"
                     placeholder="0"
-                    type="number"
+                    type="text"
                     value={leg.durationHours}
                   />
-                  <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)] opacity-40">h</span>
+                  <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)]">h</span>
                   <span className="flex select-none items-center text-[var(--color-bg-surface)]">|</span>
                   <input
-                    className="w-10 bg-transparent px-[var(--space-sm)] text-body text-[var(--color-bg-base)] outline-none placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)]"
-                    max={59}
-                    min={0}
-                    onChange={(event) => updateLeg(leg.id, { durationMinutes: event.currentTarget.value })}
+                    className="w-16 bg-transparent px-[var(--space-sm)] text-body tabular-nums text-[var(--color-bg-base)] outline-none [appearance:textfield] placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    inputMode="numeric"
+                    maxLength={2}
+                    onChange={(event) =>
+                      updateLeg(leg.id, { durationMinutes: normalizeDurationMinutes(event.currentTarget.value, leg.durationMinutes) })
+                    }
+                    pattern="[0-9]*"
                     placeholder="00"
-                    type="number"
+                    type="text"
                     value={leg.durationMinutes}
                   />
-                  <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)] opacity-40">m</span>
+                  <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)]">m</span>
                 </div>
               </div>
               <TripSelect
@@ -329,7 +549,8 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
               </label>
             </div>
           </section>
-        ))}
+          );
+        })}
       </div>
 
       <button

@@ -1,10 +1,13 @@
-import { BarChart3, List, Plane } from 'lucide-react';
+import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js';
+import List from 'lucide-react/dist/esm/icons/list.js';
+import Plane from 'lucide-react/dist/esm/icons/plane.js';
 import { FlightsPerYearChart } from '../../charts/FlightsPerYearChart';
 import { TopRoutesList } from '../../charts/TopRoutesList';
 import { FlightLog } from '../../pages/FlightLog';
 import type { Flight } from '../../types/flight';
 import type { FlightStats } from '../../utils/flightStats';
 import { formatMiles, formatNumber } from '../../utils/format';
+import { FlightDetailPanel } from '../composed/FlightDetailPanel';
 import { StatCard } from '../composed/StatCard';
 import { PillToggle } from '../primitives/PillToggle';
 
@@ -14,8 +17,10 @@ interface SidebarProps {
   activeFlightId?: string | null;
   flights: Flight[];
   onDeleteFlight: (id: string) => void;
+  onBackToFlightLog: () => void;
   onSelectFlight: (id: string | null) => void;
   onViewChange: (view: SidebarView) => void;
+  selectedFlight: Flight | null;
   stats: FlightStats;
   view: SidebarView;
 }
@@ -29,8 +34,10 @@ export function Sidebar({
   activeFlightId,
   flights,
   onDeleteFlight,
+  onBackToFlightLog,
   onSelectFlight,
   onViewChange,
+  selectedFlight,
   stats,
   view,
 }: SidebarProps) {
@@ -47,7 +54,9 @@ export function Sidebar({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-[var(--space-lg)]">
-        {view === 'stats' ? (
+        {view === 'log' && selectedFlight ? (
+          <FlightDetailPanel flight={selectedFlight} onBack={onBackToFlightLog} />
+        ) : view === 'stats' ? (
           <div className="grid gap-[var(--space-lg)]">
             <div className="grid grid-cols-2 gap-[var(--space-sm)]">
               <StatCard

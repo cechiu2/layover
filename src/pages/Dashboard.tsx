@@ -20,9 +20,9 @@ export function Dashboard({ flights }: DashboardProps) {
   const [view, setView] = useState<SidebarView>('stats');
   const stats = useMemo(() => calculateFlightStats(flights), [flights]);
   const activeFlightId = hoveredFlightId ?? selectedFlightId;
-  const activeFlight = useMemo(
-    () => flights.find((flight) => flight.id === activeFlightId) ?? null,
-    [activeFlightId, flights],
+  const selectedFlight = useMemo(
+    () => flights.find((flight) => flight.id === selectedFlightId) ?? null,
+    [selectedFlightId, flights],
   );
 
   async function handleSaveTrip(flightsToSave: FlightInput[]) {
@@ -43,26 +43,30 @@ export function Dashboard({ flights }: DashboardProps) {
   return (
     <main className="flex h-screen min-w-[calc(var(--sidebar-min-width)*2)] bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
       <GlobeCanvas
-        activeFlight={activeFlight}
         activeFlightId={activeFlightId}
         flights={flights}
         onAddTrip={() => setActivePanel('add')}
         onArcHover={setHoveredFlightId}
-        onArcSelect={setSelectedFlightId}
-        onClearActiveFlight={() => {
+        onArcSelect={(id) => {
           setHoveredFlightId(null);
-          setSelectedFlightId(null);
+          setSelectedFlightId(id);
+          setView('log');
         }}
       />
       <Sidebar
         activeFlightId={activeFlightId}
         flights={flights}
         onDeleteFlight={handleDeleteFlight}
+        onBackToFlightLog={() => {
+          setHoveredFlightId(null);
+          setSelectedFlightId(null);
+        }}
         onSelectFlight={(id) => {
           setHoveredFlightId(null);
           setSelectedFlightId(id);
         }}
         onViewChange={setView}
+        selectedFlight={selectedFlight}
         stats={stats}
         view={view}
       />

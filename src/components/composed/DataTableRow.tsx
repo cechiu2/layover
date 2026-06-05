@@ -1,4 +1,5 @@
-import { CheckCircle2, CircleAlert } from 'lucide-react';
+import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2.js';
+import CircleAlert from 'lucide-react/dist/esm/icons/circle-alert.js';
 import type { ReactNode } from 'react';
 import { cx } from '../../utils/cx';
 
