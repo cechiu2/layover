@@ -1,8 +1,7 @@
 import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js';
 import List from 'lucide-react/dist/esm/icons/list.js';
 import Plane from 'lucide-react/dist/esm/icons/plane.js';
-import { FlightsPerYearChart } from '../../charts/FlightsPerYearChart';
-import { TopRoutesList } from '../../charts/TopRoutesList';
+import { lazy, Suspense } from 'react';
 import { FlightLog } from '../../pages/FlightLog';
 import type { Flight } from '../../types/flight';
 import type { FlightStats } from '../../utils/flightStats';
@@ -10,6 +9,13 @@ import { formatMiles, formatNumber } from '../../utils/format';
 import { FlightDetailPanel } from '../composed/FlightDetailPanel';
 import { StatCard } from '../composed/StatCard';
 import { PillToggle } from '../primitives/PillToggle';
+
+const FlightsPerYearChart = lazy(() =>
+  import('../../charts/FlightsPerYearChart').then((module) => ({ default: module.FlightsPerYearChart })),
+);
+const TopRoutesList = lazy(() =>
+  import('../../charts/TopRoutesList').then((module) => ({ default: module.TopRoutesList })),
+);
 
 export type SidebarView = 'stats' | 'log';
 
@@ -76,7 +82,9 @@ export function Sidebar({
                 <BarChart3 aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />
                 Flights per year
               </h2>
-              <FlightsPerYearChart data={stats.flightsPerYear} />
+              <Suspense fallback={null}>
+                <FlightsPerYearChart data={stats.flightsPerYear} />
+              </Suspense>
             </section>
 
             <section className="grid gap-[var(--space-sm)]">
@@ -84,7 +92,9 @@ export function Sidebar({
                 <List aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />
                 Top routes
               </h2>
-              <TopRoutesList routes={stats.topRoutes} />
+              <Suspense fallback={null}>
+                <TopRoutesList routes={stats.topRoutes} />
+              </Suspense>
             </section>
           </div>
         ) : (

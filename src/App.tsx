@@ -1,16 +1,22 @@
 import LoaderCircle from 'lucide-react/dist/esm/icons/loader-circle.js';
-import { Dashboard } from './pages/Dashboard';
+import { lazy, Suspense } from 'react';
 import { useFlights } from './hooks/useFlights';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
+
+function AppLoader() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-[var(--color-bg-base)] text-[var(--color-text-secondary)]">
+      <LoaderCircle aria-hidden className="h-[var(--icon-size-lg)] w-[var(--icon-size-lg)] animate-spin" />
+    </div>
+  );
+}
 
 export function App() {
   const { error, flights, isLoading } = useFlights();
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[var(--color-bg-base)] text-[var(--color-text-secondary)]">
-        <LoaderCircle aria-hidden className="h-[var(--icon-size-lg)] w-[var(--icon-size-lg)] animate-spin" />
-      </div>
-    );
+    return <AppLoader />;
   }
 
   if (error) {
@@ -21,5 +27,9 @@ export function App() {
     );
   }
 
-  return <Dashboard flights={flights} />;
+  return (
+    <Suspense fallback={<AppLoader />}>
+      <Dashboard flights={flights} />
+    </Suspense>
+  );
 }
