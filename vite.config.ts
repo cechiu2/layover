@@ -65,7 +65,7 @@ function serveVendorAssetsPlugin(): Plugin {
   return {
     name: 'layover-vendor-assets',
     configureServer(server: ViteDevServer) {
-      server.middlewares.use((request, response, next) => {
+      server.middlewares.use(async (request, response, next) => {
         const pathname = request.url?.split('?')[0] ?? '';
         const asset = assets.get(pathname);
 
@@ -74,19 +74,17 @@ function serveVendorAssetsPlugin(): Plugin {
           return;
         }
 
-        void (async () => {
-          const [relativePath, contentType] = asset;
-          try {
-            const file = await readFile(new URL(relativePath, import.meta.url));
-            response.statusCode = 200;
-            response.setHeader('Content-Type', contentType);
-            response.setHeader('Cache-Control', 'no-cache');
-            response.end(request.method === 'HEAD' ? undefined : file);
-          } catch {
-            response.statusCode = 404;
-            response.end();
-          }
-        })();
+        const [relativePath, contentType] = asset;
+        try {
+          const file = await readFile(new URL(relativePath, import.meta.url));
+          response.statusCode = 200;
+          response.setHeader('Content-Type', contentType);
+          response.setHeader('Cache-Control', 'no-cache');
+          response.end(file);
+        } catch {
+          response.statusCode = 404;
+          response.end();
+        }
       });
     },
   };

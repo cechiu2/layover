@@ -1,14 +1,11 @@
-import { lazy, Suspense, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { AddFlightPanel } from '../features/addFlight/AddFlightPanel';
 import { GlobeCanvas } from '../globe/GlobeCanvas';
 import { Sidebar, type SidebarView } from '../components/layout/Sidebar';
 import { SlideOver } from '../components/layout/SlideOver';
 import { deleteFlight, saveFlights, saveTrip } from '../data/db';
 import type { Flight, FlightInput } from '../types/flight';
 import { calculateFlightStats } from '../utils/flightStats';
-
-const AddFlightPanel = lazy(() =>
-  import('../features/addFlight/AddFlightPanel').then((module) => ({ default: module.AddFlightPanel })),
-);
 
 interface DashboardProps {
   flights: Flight[];
@@ -75,9 +72,7 @@ export function Dashboard({ flights }: DashboardProps) {
       />
 
       <SlideOver isOpen={activePanel === 'add'} onClose={() => setActivePanel(null)} title="Add trip" variant="modal">
-        <Suspense fallback={null}>
-          <AddFlightPanel onCancel={() => setActivePanel(null)} onImport={handleImportFlights} onSave={handleSaveTrip} />
-        </Suspense>
+        <AddFlightPanel onCancel={() => setActivePanel(null)} onImport={handleImportFlights} onSave={handleSaveTrip} />
       </SlideOver>
     </main>
   );
