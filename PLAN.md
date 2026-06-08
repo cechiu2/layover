@@ -77,7 +77,7 @@ This plan covers all work across six areas: autofill, airport coverage, duration
 
 ---
 
-## Task E — Show +1 day indicator for overnight flights
+## Task E — Show +1 day indicator for overnight flights ✓ (implemented)
 
 **What:** When `arrivalTime < departureTime` on a leg, render a subtle "+1" badge next to the arrival time input.
 

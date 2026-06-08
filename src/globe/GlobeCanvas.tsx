@@ -133,6 +133,37 @@ function toPoint(airport: Airport): GlobePoint {
   };
 }
 
+function applyGlobeData(
+  globe: GlobeInstance,
+  arcs: GlobeArc[],
+  points: GlobePoint[],
+  flights: Flight[],
+  activeFlightId: string | null | undefined,
+) {
+  const accentBlue = getToken('--color-accent-blue');
+  const accentAmber = getToken('--color-accent-amber');
+  const accentTeal = getToken('--color-accent-teal');
+
+  globe
+    .arcsData(arcs)
+    .arcColor((arc) => {
+      const globeArc = arc as GlobeArc;
+      return globeArc.id === activeFlightId ? [accentTeal, accentBlue] : [accentBlue, accentAmber];
+    })
+    .arcAltitude((arc) => ((arc as GlobeArc).id === activeFlightId ? 0.28 : 0.18))
+    .arcStroke((arc) => ((arc as GlobeArc).id === activeFlightId ? 0.8 : 0.38))
+    .pointsData(points)
+    .pointColor((point) => {
+      const globePoint = point as GlobePoint;
+      const touchesActiveFlight = flights.some(
+        (flight) =>
+          flight.id === activeFlightId &&
+          (flight.origin.iata === globePoint.id || flight.destination.iata === globePoint.id),
+      );
+      return touchesActiveFlight ? accentTeal : accentAmber;
+    });
+}
+
 export function GlobeCanvas({
   activeFlightId,
   flights,
@@ -156,6 +187,17 @@ export function GlobeCanvas({
 
     return Array.from(visitedAirports.values()).map(toPoint);
   }, [flights]);
+
+  // Keep refs to the latest data so the init effect can apply it once the globe is ready
+  const arcsRef = useRef(arcs);
+  const pointsRef = useRef(points);
+  const flightsRef = useRef(flights);
+  const activeFlightIdRef = useRef(activeFlightId);
+
+  useEffect(() => { arcsRef.current = arcs; }, [arcs]);
+  useEffect(() => { pointsRef.current = points; }, [points]);
+  useEffect(() => { flightsRef.current = flights; }, [flights]);
+  useEffect(() => { activeFlightIdRef.current = activeFlightId; }, [activeFlightId]);
 
   useEffect(() => {
     onArcHoverRef.current = onArcHover;
@@ -230,6 +272,9 @@ export function GlobeCanvas({
         });
 
         resizeObserver.observe(container);
+
+        // Apply whatever data arrived while the globe was loading
+        applyGlobeData(globe, arcsRef.current, pointsRef.current, flightsRef.current, activeFlightIdRef.current);
       })
       .catch((error: unknown) => {
         console.error(error);
@@ -245,34 +290,8 @@ export function GlobeCanvas({
 
   useEffect(() => {
     const globe = globeRef.current;
-
-    if (!globe) {
-      return;
-    }
-
-    const accentBlue = getToken('--color-accent-blue');
-    const accentAmber = getToken('--color-accent-amber');
-    const accentTeal = getToken('--color-accent-teal');
-
-    globe
-      .arcsData(arcs)
-      .arcColor((arc) => {
-        const globeArc = arc as GlobeArc;
-        return globeArc.id === activeFlightId ? [accentTeal, accentBlue] : [accentBlue, accentAmber];
-      })
-      .arcAltitude((arc) => ((arc as GlobeArc).id === activeFlightId ? 0.28 : 0.18))
-      .arcStroke((arc) => ((arc as GlobeArc).id === activeFlightId ? 0.8 : 0.38))
-      .pointsData(points)
-      .pointColor((point) => {
-        const globePoint = point as GlobePoint;
-        const touchesActiveFlight = flights.some(
-          (flight) =>
-            flight.id === activeFlightId &&
-            (flight.origin.iata === globePoint.id || flight.destination.iata === globePoint.id),
-        );
-
-        return touchesActiveFlight ? accentTeal : accentAmber;
-      });
+    if (!globe) return;
+    applyGlobeData(globe, arcs, points, flights, activeFlightId);
   }, [activeFlightId, arcs, flights, points]);
 
   return (
