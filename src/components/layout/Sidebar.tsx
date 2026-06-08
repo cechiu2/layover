@@ -1,6 +1,4 @@
-import BarChart3 from 'lucide-react/dist/esm/icons/bar-chart-3.js';
-import List from 'lucide-react/dist/esm/icons/list.js';
-import Plane from 'lucide-react/dist/esm/icons/plane.js';
+import { BarChart3, List, Plane } from 'lucide-react';
 import { FlightsPerYearChart } from '../../charts/FlightsPerYearChart';
 import { TopRoutesList } from '../../charts/TopRoutesList';
 import { FlightLog } from '../../pages/FlightLog';

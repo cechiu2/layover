@@ -13,6 +13,7 @@ export interface FlightLookupMatch {
   destinationIata: string;
   departureTime?: string;
   arrivalTime?: string;
+  arrivalDate?: string;  // local date at destination, YYYY-MM-DD
   durationMinutes?: number;
   aircraftType?: string;
 }

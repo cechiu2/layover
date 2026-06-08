@@ -1,4 +1,4 @@
-import CheckCircle2 from 'lucide-react/dist/esm/icons/check-circle-2.js';
+import { CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/primitives/Button';
 
 interface ImportSuccessProps {

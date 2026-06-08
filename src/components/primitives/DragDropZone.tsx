@@ -1,4 +1,4 @@
-import UploadCloud from 'lucide-react/dist/esm/icons/upload-cloud.js';
+import { UploadCloud } from 'lucide-react';
 import { useRef, useState, type DragEvent } from 'react';
 import { cx } from '../../utils/cx';
 

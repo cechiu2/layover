@@ -1,7 +1,4 @@
-import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right.js';
-import Plus from 'lucide-react/dist/esm/icons/plus.js';
-import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js';
-import UploadCloud from 'lucide-react/dist/esm/icons/upload-cloud.js';
+import { ArrowRight, Plus, Trash2, UploadCloud } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type SelectHTMLAttributes } from 'react';
 import { Button } from '../../components/primitives/Button';
 import { Input } from '../../components/primitives/Input';
@@ -35,6 +32,7 @@ interface TripLegDraft {
   aircraftType: string;
   departureTime: string;
   arrivalTime: string;
+  arrivalDate: string;  // local date at destination from API, YYYY-MM-DD
   durationHours: string;
   durationMinutes: string;
 }
@@ -67,6 +65,7 @@ function createEmptyLeg(previousLeg?: TripLegDraft): TripLegDraft {
     aircraftType: '',
     departureTime: '',
     arrivalTime: '',
+    arrivalDate: '',
     durationHours: '',
     durationMinutes: '',
   };
@@ -126,6 +125,48 @@ function splitDurationMinutes(durationMinutes: number): Pick<TripLegDraft, 'dura
   };
 }
 
+// Returns the local arrival date (YYYY-MM-DD) for a leg.
+// Priority: API arrivalDate > departure date + duration math > cross-midnight heuristic > departure date.
+function getArrivalDate(leg: TripLegDraft): string | null {
+  if (!leg.date) return null;
+  if (leg.arrivalDate) return leg.arrivalDate;
+
+  const [depH, depM] = leg.departureTime.split(':').map(Number);
+  if (!leg.departureTime || !Number.isFinite(depH) || !Number.isFinite(depM)) return leg.date;
+
+  const durH = parseInt(leg.durationHours, 10) || 0;
+  const durM = parseInt(leg.durationMinutes, 10) || 0;
+  const hasDuration = durH > 0 || durM > 0;
+
+  const dayOffset = hasDuration
+    ? Math.floor((depH * 60 + depM + durH * 60 + durM) / 1440)
+    : leg.arrivalTime && leg.arrivalTime < leg.departureTime
+      ? 1
+      : 0;
+
+  if (dayOffset === 0) return leg.date;
+
+  const d = new Date(`${leg.date}T00:00:00`);
+  if (Number.isNaN(d.valueOf())) return null;
+  d.setDate(d.getDate() + dayOffset);
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const dy = String(d.getDate()).padStart(2, '0');
+  return `${y}-${mo}-${dy}`;
+}
+
+function computeArrivalDayOffset(leg: TripLegDraft): number {
+  if (!leg.date) {
+    return leg.departureTime && leg.arrivalTime && leg.arrivalTime < leg.departureTime ? 1 : 0;
+  }
+  const arrivalDate = getArrivalDate(leg);
+  if (!arrivalDate || arrivalDate === leg.date) return 0;
+  const dep = new Date(leg.date);
+  const arr = new Date(arrivalDate);
+  if (Number.isNaN(dep.valueOf()) || Number.isNaN(arr.valueOf())) return 0;
+  return Math.max(0, Math.round((arr.valueOf() - dep.valueOf()) / 86400000));
+}
+
 function formatLookupMatch(match: FlightLookupMatch): string {
   const route = `${match.originIata} to ${match.destinationIata}`;
   const times = match.departureTime && match.arrivalTime ? ` - ${match.departureTime}-${match.arrivalTime}` : '';
@@ -155,18 +196,13 @@ function getDateTimeMinutes(date: string, time: string): number | null {
 }
 
 function getLayoverMinutes(previousLeg: TripLegDraft, nextLeg: TripLegDraft): number | undefined {
-  const previousArrival = getDateTimeMinutes(previousLeg.date, previousLeg.arrivalTime);
-  let nextDeparture = getDateTimeMinutes(nextLeg.date, nextLeg.departureTime);
+  const prevArrivalDate = getArrivalDate(previousLeg);
+  const previousArrival = getDateTimeMinutes(prevArrivalDate ?? '', previousLeg.arrivalTime);
+  const nextDeparture = getDateTimeMinutes(nextLeg.date, nextLeg.departureTime);
 
-  if (previousArrival === null || nextDeparture === null) {
-    return undefined;
-  }
+  if (previousArrival === null || nextDeparture === null) return undefined;
 
-  while (nextDeparture < previousArrival) {
-    nextDeparture += 24 * 60;
-  }
-
-  return nextDeparture - previousArrival;
+  return Math.max(0, nextDeparture - previousArrival);
 }
 
 export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelProps) {
@@ -211,6 +247,7 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
           aircraftType: match.aircraftType ?? leg.aircraftType,
           airline: match.carrierCode ?? leg.airline,
           arrivalTime: match.arrivalTime ?? leg.arrivalTime,
+          arrivalDate: match.arrivalDate ?? leg.arrivalDate,
           departureTime: match.departureTime ?? leg.departureTime,
           destination: destination ?? leg.destination,
           flightNumber: match.flightNumber ?? leg.flightNumber,
@@ -228,6 +265,27 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
       },
     }));
   }
+
+  useEffect(() => {
+    legs.forEach((leg) => {
+      if (!leg.departureTime || !leg.arrivalTime) return;
+      // Use numeric check so "0" / "00" don't block re-computation
+      const existingH = parseInt(leg.durationHours, 10) || 0;
+      const existingM = parseInt(leg.durationMinutes, 10) || 0;
+      if (existingH !== 0 || existingM !== 0) return;
+
+      const [depH, depM] = leg.departureTime.split(':').map(Number);
+      const [arrH, arrM] = leg.arrivalTime.split(':').map(Number);
+
+      if ([depH, depM, arrH, arrM].some((n) => !Number.isFinite(n))) return;
+
+      let diff = (arrH * 60 + arrM) - (depH * 60 + depM);
+      if (diff < 0) diff += 24 * 60;
+      if (diff === 0) return; // don't store zero duration
+
+      updateLeg(leg.id, splitDurationMinutes(diff));
+    });
+  }, [legs.map((l) => `${l.id}|${l.departureTime}|${l.arrivalTime}`).join(',')]);
 
   useEffect(() => {
     const timeouts: number[] = [];
@@ -334,7 +392,7 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
       return;
     }
 
-    const flights = legs.flatMap((leg, index): FlightInput[] => {
+const flights = legs.flatMap((leg, index): FlightInput[] => {
       if (!leg.origin || !leg.destination) {
         return [];
       }
@@ -459,15 +517,23 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
                 type="time"
                 value={leg.departureTime}
               />
-              <Input
-                className={leg.arrivalTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]'}
-                label="Arrival time"
-                onChange={(event) => updateLeg(leg.id, { arrivalTime: event.currentTarget.value })}
-                placeholder="Enter time"
-                tone="light"
-                type="time"
-                value={leg.arrivalTime}
-              />
+              <label className="grid gap-[var(--space-sm)]">
+                <div className="flex items-baseline justify-between">
+                  <span className="label-text text-[var(--color-accent-amber)]">Arrival time</span>
+                  {computeArrivalDayOffset(leg) > 0 && (
+                    <span className="label-text text-[var(--color-accent-teal)]">+{computeArrivalDayOffset(leg)}</span>
+                  )}
+                </div>
+                <input
+                  className={cx(
+                    'h-[var(--control-height)] w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] px-[var(--space-sm)] text-body outline-none transition focus:border-[var(--color-accent-teal)]',
+                    leg.arrivalTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]',
+                  )}
+                  onChange={(event) => updateLeg(leg.id, { arrivalTime: event.currentTarget.value })}
+                  type="time"
+                  value={leg.arrivalTime}
+                />
+              </label>
             </div>
 
             {lookupState?.status === 'loading' ? (
@@ -564,7 +630,7 @@ export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelPro
         Add layover
       </button>
 
-      <div className="flex items-center justify-between gap-[var(--space-md)]">
+<div className="flex items-center justify-between gap-[var(--space-md)]">
         <Button
           className="border-dotted border-[var(--color-accent-teal)] text-[var(--color-accent-teal)]"
           icon={<UploadCloud aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />}

@@ -30,9 +30,19 @@ function getYear(date: string): string {
   return new Date(date).getUTCFullYear().toString();
 }
 
+function parseDurationMinutes(s: string): number {
+  const hours = s.match(/(\d+)\s*h/);
+  const minutes = s.match(/(\d+)\s*m/);
+  return (hours ? parseInt(hours[1], 10) * 60 : 0) + (minutes ? parseInt(minutes[1], 10) : 0);
+}
+
 export function calculateFlightStats(flights: Flight[]): FlightStats {
   const totalMiles = flights.reduce((sum, flight) => sum + (flight.distanceMiles ?? 0), 0);
   const totalLayoverMinutes = flights.reduce((sum, flight) => sum + (flight.layoverMinutes ?? 0), 0);
+  const totalAirMinutes = flights.reduce((sum, flight) => {
+    if (flight.flightDuration) return sum + parseDurationMinutes(flight.flightDuration);
+    return sum + ((flight.distanceMiles ?? 0) / 500) * 60;
+  }, 0);
   const countries = new Set<string>();
   const airports = new Map<string, Airport>();
   const years = new Map<string, number>();
@@ -68,7 +78,7 @@ export function calculateFlightStats(flights: Flight[]): FlightStats {
     totalFlights: flights.length,
     totalMiles,
     countries: countries.size,
-    timeInAirHours: Math.round(totalMiles / 500),
+    timeInAirHours: Math.round(totalAirMinutes / 60),
     layoverHours: Math.round(totalLayoverMinutes / 60),
     airports: airports.size,
     yearsFlying: years.size,

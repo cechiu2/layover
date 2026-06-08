@@ -95,6 +95,31 @@ function extractLocalTime(value?: string | null): string | undefined {
   return value?.match(/\s(\d{2}):(\d{2})/)?.slice(1, 3).join(':');
 }
 
+// Compute the actual local arrival date at the destination by adding the UTC offset
+// to the UTC arrival time. AeroDataBox puts the departure date in local time strings,
+// so we can't trust the date component of arrival.scheduledTime.local directly.
+function extractArrivalLocalDate(arrivalUtc?: string | null, arrivalLocal?: string | null): string | undefined {
+  if (!arrivalUtc || !arrivalLocal) return undefined;
+
+  // Extract UTC offset from local string like "2026-11-20 04:55+08:00"
+  const offsetMatch = arrivalLocal.match(/([+-])(\d{2}):(\d{2})$/);
+  if (!offsetMatch) return undefined;
+
+  const sign = offsetMatch[1] === '+' ? 1 : -1;
+  const offsetMinutes = sign * (parseInt(offsetMatch[2], 10) * 60 + parseInt(offsetMatch[3], 10));
+
+  // Parse UTC arrival time
+  const utcDate = new Date(arrivalUtc.replace(' ', 'T'));
+  if (Number.isNaN(utcDate.valueOf())) return undefined;
+
+  // Apply offset to get local datetime at destination
+  const local = new Date(utcDate.valueOf() + offsetMinutes * 60000);
+  const y = local.getUTCFullYear();
+  const mo = String(local.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(local.getUTCDate()).padStart(2, '0');
+  return `${y}-${mo}-${d}`;
+}
+
 function computeDurationMinutes(
   departureUtc?: string | null,
   arrivalUtc?: string | null,
@@ -193,7 +218,12 @@ function aeroDataBoxLookupPlugin(apiKey: string): Plugin {
               const retryFlights = (await retryResponse.json()) as AeroDataBoxFlight[];
               const matches = Array.isArray(retryFlights)
                 ? retryFlights
-                    .filter((f) => f.departure?.airport?.iata?.toUpperCase() === lookupRequest.originIata)
+                    .filter((f) => {
+                  if (f.departure?.airport?.iata?.toUpperCase() !== lookupRequest.originIata) return false;
+                  // AeroDataBox can return adjacent-day flights — keep only the one departing on the requested date
+                  const depDate = f.departure?.scheduledTime?.local?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+                  return !depDate || depDate === lookupRequest.departureDate;
+                })
                     .map((f) => {
                       const originIata = f.departure?.airport?.iata?.toUpperCase();
                       const destinationIata = f.arrival?.airport?.iata?.toUpperCase();
@@ -208,6 +238,7 @@ function aeroDataBoxLookupPlugin(apiKey: string): Plugin {
                         destinationIata,
                         departureTime: extractLocalTime(f.departure?.scheduledTime?.local),
                         arrivalTime: extractLocalTime(f.arrival?.scheduledTime?.local),
+                        arrivalDate: extractArrivalLocalDate(f.arrival?.scheduledTime?.utc, f.arrival?.scheduledTime?.local),
                         durationMinutes: computeDurationMinutes(f.departure?.scheduledTime?.utc, f.arrival?.scheduledTime?.utc),
                         aircraftType: f.aircraft?.model ?? undefined,
                       };
@@ -263,6 +294,7 @@ function aeroDataBoxLookupPlugin(apiKey: string): Plugin {
                 destinationIata,
                 departureTime: extractLocalTime(f.departure?.scheduledTime?.local),
                 arrivalTime: extractLocalTime(f.arrival?.scheduledTime?.local),
+                arrivalDate: extractArrivalLocalDate(f.arrival?.scheduledTime?.utc, f.arrival?.scheduledTime?.local),
                 durationMinutes: computeDurationMinutes(
                   f.departure?.scheduledTime?.utc,
                   f.arrival?.scheduledTime?.utc,

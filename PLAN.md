@@ -44,7 +44,7 @@ This plan covers all work across six areas: autofill, airport coverage, duration
 
 ---
 
-## Task B — Expand airports.json to global coverage
+## Task B — Expand airports.json to global coverage ✓ (implemented)
 
 **What:** Replace the 84-entry file (~76% US) with ~3,000 globally distributed airports.
 
@@ -59,7 +59,7 @@ This plan covers all work across six areas: autofill, airport coverage, duration
 
 ---
 
-## Task C — Fix timeInAirHours to use actual stored durations
+## Task C — Fix timeInAirHours to use actual stored durations ✓ (implemented)
 
 **What:** Replace the `totalMiles / 500` air-time estimate with a sum of stored `flightDuration` values.
 
@@ -68,7 +68,7 @@ This plan covers all work across six areas: autofill, airport coverage, duration
 
 ---
 
-## Task D — Auto-compute flight duration from departure + arrival times
+## Task D — Auto-compute flight duration from departure + arrival times ✓ (implemented)
 
 **What:** When both times are entered in the Add Flight form and duration is still empty, auto-fill duration.
 

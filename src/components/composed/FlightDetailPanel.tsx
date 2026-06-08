@@ -1,5 +1,4 @@
-import ArrowLeft from 'lucide-react/dist/esm/icons/arrow-left.js';
-import Plane from 'lucide-react/dist/esm/icons/plane.js';
+import { ArrowLeft, Plane } from 'lucide-react';
 import type { Flight } from '../../types/flight';
 import { formatDate, formatMiles, formatSeatClass } from '../../utils/format';
 import { Button } from '../primitives/Button';

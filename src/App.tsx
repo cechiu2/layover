@@ -1,4 +1,4 @@
-import LoaderCircle from 'lucide-react/dist/esm/icons/loader-circle.js';
+import { LoaderCircle } from 'lucide-react';
 import { Dashboard } from './pages/Dashboard';
 import { useFlights } from './hooks/useFlights';
 
