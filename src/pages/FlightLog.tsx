@@ -1,9 +1,11 @@
 import { FlightRow } from '../components/composed/FlightRow';
 import type { Flight } from '../types/flight';
+import { getRouteKey } from '../utils/routeKey';
 
 interface FlightLogProps {
   flights: Flight[];
   selectedFlightId?: string | null;
+  selectedRouteKey?: string | null;
   onDeleteFlight?: (id: string) => void;
   onSelectFlight?: (id: string) => void;
 }
@@ -19,7 +21,7 @@ function groupFlightsByYear(flights: Flight[]): Array<[string, Flight[]]> {
   return Array.from(groups.entries()).sort((a, b) => b[0].localeCompare(a[0]));
 }
 
-export function FlightLog({ flights, onDeleteFlight, onSelectFlight, selectedFlightId }: FlightLogProps) {
+export function FlightLog({ flights, onDeleteFlight, onSelectFlight, selectedFlightId, selectedRouteKey }: FlightLogProps) {
   if (flights.length === 0) {
     return (
       <div className="rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] p-[var(--space-md)] text-body text-[var(--color-text-secondary)]">
@@ -36,7 +38,7 @@ export function FlightLog({ flights, onDeleteFlight, onSelectFlight, selectedFli
           {yearFlights.map((flight) => (
             <FlightRow
               flight={flight}
-              isSelected={selectedFlightId === flight.id}
+              isSelected={selectedFlightId === flight.id || selectedRouteKey === getRouteKey(flight)}
               key={flight.id}
               onDelete={onDeleteFlight}
               onSelect={onSelectFlight}

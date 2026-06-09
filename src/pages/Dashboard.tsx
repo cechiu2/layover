@@ -7,6 +7,7 @@ import { SlideOver } from '../components/layout/SlideOver';
 import { deleteFlight, saveFlights, saveTrip } from '../data/db';
 import type { Flight, FlightInput } from '../types/flight';
 import { calculateFlightStats } from '../utils/flightStats';
+import { getRouteKey } from '../utils/routeKey';
 
 interface DashboardProps {
   flights: Flight[];
@@ -18,13 +19,35 @@ export function Dashboard({ flights }: DashboardProps) {
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [hoveredFlightId, setHoveredFlightId] = useState<string | null>(null);
   const [selectedFlightId, setSelectedFlightId] = useState<string | null>(null);
+  const [selectedRouteKey, setSelectedRouteKey] = useState<string | null>(null);
   const [view, setView] = useState<SidebarView>('stats');
   const stats = useMemo(() => calculateFlightStats(flights), [flights]);
   const activeFlightId = hoveredFlightId ?? selectedFlightId;
-  const selectedFlight = useMemo(
-    () => flights.find((flight) => flight.id === selectedFlightId) ?? null,
-    [selectedFlightId, flights],
+  const selectedRouteFlights = useMemo(
+    () =>
+      selectedRouteKey
+        ? flights
+            .filter((flight) => getRouteKey(flight) === selectedRouteKey)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        : null,
+    [flights, selectedRouteKey],
   );
+
+  function selectFlightRoute(id: string | null) {
+    if (!id) {
+      setSelectedFlightId(null);
+      setSelectedRouteKey(null);
+      return;
+    }
+
+    const flight = flights.find((candidate) => candidate.id === id);
+    if (!flight) {
+      return;
+    }
+
+    setSelectedFlightId(id);
+    setSelectedRouteKey(getRouteKey(flight));
+  }
 
   async function handleSaveTrip(flightsToSave: FlightInput[]) {
     await saveTrip(flightsToSave);
@@ -38,7 +61,14 @@ export function Dashboard({ flights }: DashboardProps) {
   async function handleDeleteFlight(id: string) {
     await deleteFlight(id);
     setHoveredFlightId((currentId) => (currentId === id ? null : currentId));
-    setSelectedFlightId((currentId) => (currentId === id ? null : currentId));
+    if (selectedRouteFlights?.some((flight) => flight.id === id) && selectedRouteFlights.length <= 1) {
+      setSelectedFlightId(null);
+      setSelectedRouteKey(null);
+    } else {
+      setSelectedFlightId((currentId) =>
+        currentId === id ? selectedRouteFlights?.find((flight) => flight.id !== id)?.id ?? null : currentId,
+      );
+    }
   }
 
   return (
@@ -50,7 +80,7 @@ export function Dashboard({ flights }: DashboardProps) {
         onArcHover={setHoveredFlightId}
         onArcSelect={(id) => {
           setHoveredFlightId(null);
-          setSelectedFlightId(id);
+          selectFlightRoute(id);
           setView('log');
         }}
       />
@@ -61,14 +91,16 @@ export function Dashboard({ flights }: DashboardProps) {
         onBackToFlightLog={() => {
           setHoveredFlightId(null);
           setSelectedFlightId(null);
+          setSelectedRouteKey(null);
         }}
         onSelectFlight={(id) => {
           setHoveredFlightId(null);
-          setSelectedFlightId(id);
+          selectFlightRoute(id);
         }}
         onShowLogin={() => setActivePanel('login')}
         onViewChange={setView}
-        selectedFlight={selectedFlight}
+        selectedRouteFlights={selectedRouteFlights}
+        selectedRouteKey={selectedRouteKey}
         stats={stats}
         view={view}
       />

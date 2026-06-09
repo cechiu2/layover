@@ -21,7 +21,8 @@ interface SidebarProps {
   onSelectFlight: (id: string | null) => void;
   onShowLogin: () => void;
   onViewChange: (view: SidebarView) => void;
-  selectedFlight: Flight | null;
+  selectedRouteFlights: Flight[] | null;
+  selectedRouteKey: string | null;
   stats: FlightStats;
   view: SidebarView;
 }
@@ -39,7 +40,8 @@ export function Sidebar({
   onSelectFlight,
   onShowLogin,
   onViewChange,
-  selectedFlight,
+  selectedRouteFlights,
+  selectedRouteKey,
   stats,
   view,
 }: SidebarProps) {
@@ -89,8 +91,12 @@ export function Sidebar({
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-[var(--space-lg)]">
-        {view === 'log' && selectedFlight ? (
-          <FlightDetailPanel flight={selectedFlight} onBack={onBackToFlightLog} />
+        {view === 'log' && selectedRouteFlights && selectedRouteFlights.length > 0 ? (
+          <FlightDetailPanel
+            flights={selectedRouteFlights}
+            onBack={onBackToFlightLog}
+            selectedFlightId={activeFlightId ?? null}
+          />
         ) : view === 'stats' ? (
           <div className="grid gap-[var(--space-lg)]">
             <div className="grid grid-cols-2 gap-[var(--space-sm)]">
@@ -128,6 +134,7 @@ export function Sidebar({
             onDeleteFlight={onDeleteFlight}
             onSelectFlight={(id) => onSelectFlight(id)}
             selectedFlightId={activeFlightId}
+            selectedRouteKey={selectedRouteKey}
           />
         )}
       </div>

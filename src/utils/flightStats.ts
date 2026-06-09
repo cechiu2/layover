@@ -1,5 +1,6 @@
 import type { Airport } from '../types/airport';
 import type { Flight } from '../types/flight';
+import { getRouteKey } from './routeKey';
 
 export interface FlightsPerYear {
   year: string;
@@ -57,7 +58,7 @@ export function calculateFlightStats(flights: Flight[]): FlightStats {
     const year = getYear(flight.date);
     years.set(year, (years.get(year) ?? 0) + 1);
 
-    const routeKey = [flight.origin.iata, flight.destination.iata].sort().join('-');
+    const routeKey = getRouteKey(flight);
     const route = routes.get(routeKey);
 
     if (route) {

@@ -86,7 +86,7 @@ This plan covers all work across six areas: autofill, airport coverage, duration
 
 ---
 
-## Task F — Account system and cloud persistence (Supabase)
+## Task F — Account system and cloud persistence (Supabase) ✓ (implemented)
 
 **What:** Let users sign up / log in so their flight data persists across devices and browser sessions.  
 **Context:** Currently data lives only in IndexedDB (Dexie). CLAUDE.md listed auth and Supabase as out-of-scope for MVP — that scope is now expanding.
