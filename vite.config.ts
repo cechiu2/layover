@@ -272,12 +272,15 @@ function aeroDataBoxLookupPlugin(apiKey: string): Plugin {
             return;
           }
 
-          // Filter to flights departing from the requested origin
+          // Filter to flights departing from the requested origin on the requested date.
+          // AeroDataBox returns any flight "active on" the date (including ones that
+          // departed earlier and are still airborne), so we must also match departure date.
           const matches = flights
-            .filter(
-              (f) =>
-                f.departure?.airport?.iata?.toUpperCase() === lookupRequest.originIata,
-            )
+            .filter((f) => {
+              if (f.departure?.airport?.iata?.toUpperCase() !== lookupRequest.originIata) return false;
+              const depDate = f.departure?.scheduledTime?.local?.match(/^(\d{4}-\d{2}-\d{2})/)?.[1];
+              return !depDate || depDate === lookupRequest.departureDate;
+            })
             .map((f) => {
               const originIata = f.departure?.airport?.iata?.toUpperCase();
               const destinationIata = f.arrival?.airport?.iata?.toUpperCase();

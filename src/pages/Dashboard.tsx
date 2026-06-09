@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { LoginPanel } from '../auth/LoginPanel';
 import { AddFlightPanel } from '../features/addFlight/AddFlightPanel';
 import { GlobeCanvas } from '../globe/GlobeCanvas';
 import { Sidebar, type SidebarView } from '../components/layout/Sidebar';
@@ -11,7 +12,7 @@ interface DashboardProps {
   flights: Flight[];
 }
 
-type ActivePanel = 'add' | null;
+type ActivePanel = 'add' | 'login' | null;
 
 export function Dashboard({ flights }: DashboardProps) {
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
@@ -65,6 +66,7 @@ export function Dashboard({ flights }: DashboardProps) {
           setHoveredFlightId(null);
           setSelectedFlightId(id);
         }}
+        onShowLogin={() => setActivePanel('login')}
         onViewChange={setView}
         selectedFlight={selectedFlight}
         stats={stats}
@@ -73,6 +75,9 @@ export function Dashboard({ flights }: DashboardProps) {
 
       <SlideOver isOpen={activePanel === 'add'} onClose={() => setActivePanel(null)} title="Add trip" variant="modal">
         <AddFlightPanel onCancel={() => setActivePanel(null)} onImport={handleImportFlights} onSave={handleSaveTrip} />
+      </SlideOver>
+      <SlideOver isOpen={activePanel === 'login'} onClose={() => setActivePanel(null)} title="Account">
+        <LoginPanel onDone={() => setActivePanel(null)} />
       </SlideOver>
     </main>
   );

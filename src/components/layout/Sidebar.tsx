@@ -1,4 +1,5 @@
-import { BarChart3, List, Plane } from 'lucide-react';
+import { BarChart3, List, LogIn, LogOut, Plane } from 'lucide-react';
+import { useAuth } from '../../auth/AuthProvider';
 import { FlightsPerYearChart } from '../../charts/FlightsPerYearChart';
 import { TopRoutesList } from '../../charts/TopRoutesList';
 import { FlightLog } from '../../pages/FlightLog';
@@ -7,6 +8,7 @@ import type { FlightStats } from '../../utils/flightStats';
 import { formatMiles, formatNumber } from '../../utils/format';
 import { FlightDetailPanel } from '../composed/FlightDetailPanel';
 import { StatCard } from '../composed/StatCard';
+import { Button } from '../primitives/Button';
 import { PillToggle } from '../primitives/PillToggle';
 
 export type SidebarView = 'stats' | 'log';
@@ -17,6 +19,7 @@ interface SidebarProps {
   onDeleteFlight: (id: string) => void;
   onBackToFlightLog: () => void;
   onSelectFlight: (id: string | null) => void;
+  onShowLogin: () => void;
   onViewChange: (view: SidebarView) => void;
   selectedFlight: Flight | null;
   stats: FlightStats;
@@ -34,11 +37,18 @@ export function Sidebar({
   onDeleteFlight,
   onBackToFlightLog,
   onSelectFlight,
+  onShowLogin,
   onViewChange,
   selectedFlight,
   stats,
   view,
 }: SidebarProps) {
+  const { error, isConfigured, signOut, user } = useAuth();
+
+  async function handleSignOut() {
+    await signOut();
+  }
+
   return (
     <aside className="flex h-screen min-h-0 w-[clamp(var(--sidebar-min-width),30vw,var(--sidebar-max-width))] flex-col border-l border-[var(--color-border-default)] bg-[var(--color-bg-surface)]">
       <header className="grid gap-[var(--space-lg)] border-b border-[var(--color-border-default)] p-[var(--space-lg)]">
@@ -47,8 +57,35 @@ export function Sidebar({
             <p className="label-text text-[var(--color-accent-teal)]">Layover</p>
             <h1 className="text-display text-[var(--color-text-primary)]">Travel Atlas</h1>
           </div>
+          <div className="flex items-center gap-[var(--space-sm)]">
+            {user ? (
+              <Button
+                aria-label="Sign out"
+                icon={<LogOut aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />}
+                onClick={() => {
+                  void handleSignOut();
+                }}
+                size="icon"
+                variant="ghost"
+              />
+            ) : (
+              <Button
+                aria-label={isConfigured ? 'Sign in' : 'Configure account sync'}
+                icon={<LogIn aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />}
+                onClick={onShowLogin}
+                variant="ghost"
+              >
+                Log in
+              </Button>
+            )}
+          </div>
         </div>
         <PillToggle label="View" onChange={onViewChange} options={viewOptions} value={view} />
+        {error ? (
+          <p className="rounded-[var(--radius-md)] border border-[var(--color-accent-amber)] bg-[var(--color-bg-elevated)] p-[var(--space-sm)] text-mono text-[var(--color-accent-amber)]">
+            Cloud sync paused: {error}
+          </p>
+        ) : null}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-[var(--space-lg)]">
