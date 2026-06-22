@@ -55,37 +55,12 @@ interface GlobeFactory {
   (options: { animateIn: boolean; waitForGlobeReady: boolean }): (container: HTMLElement) => GlobeInstance;
 }
 
-declare global {
-  interface Window {
-    Globe?: GlobeFactory;
-  }
-}
-
 let globeLoadPromise: Promise<GlobeFactory> | null = null;
 
 function loadGlobe(): Promise<GlobeFactory> {
-  if (window.Globe) {
-    return Promise.resolve(window.Globe);
+  if (!globeLoadPromise) {
+    globeLoadPromise = import('globe.gl').then((module) => module.default as GlobeFactory);
   }
-
-  if (globeLoadPromise) {
-    return globeLoadPromise;
-  }
-
-  globeLoadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = '/vendor/globe.gl.min.js';
-    script.onload = () => {
-      if (window.Globe) {
-        resolve(window.Globe);
-      } else {
-        reject(new Error('Globe library did not initialize.'));
-      }
-    };
-    script.onerror = () => reject(new Error('Unable to load globe library.'));
-    document.head.appendChild(script);
-  });
 
   return globeLoadPromise;
 }
@@ -299,7 +274,6 @@ export function GlobeCanvas({
 
         resizeObserver.observe(container);
 
-        // Apply whatever data arrived while the globe was loading
         applyGlobeData(globe, arcsRef.current, pointsRef.current, flightsRef.current, activeFlightIdRef.current);
       })
       .catch((error: unknown) => {
@@ -329,19 +303,24 @@ export function GlobeCanvas({
       />
       <div className="pointer-events-none absolute left-[var(--space-xl)] top-[32vh] z-20">
         {flights.length === 0 ? (
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-default)] bg-[var(--empty-state-bg)] px-[var(--space-lg)] py-[var(--space-md)] text-heading-sm text-[var(--color-text-secondary)] backdrop-blur-md">
-            No flights logged yet
+          <div className="pointer-events-auto grid max-w-[360px] gap-[var(--space-sm)] rounded-[var(--radius-lg)] border border-[var(--glass-card-border)] bg-[var(--empty-state-bg)] px-[var(--space-lg)] py-[var(--space-md)] backdrop-blur-md">
+            <h1 className="text-display text-[var(--color-text-primary)]">Start your travel atlas</h1>
+            <p className="text-body text-[var(--color-text-secondary)]">Add your first flight to draw your first route.</p>
+            <div className="pt-[var(--space-xs)]">
+              <Button onClick={onAddTrip} variant="primary">
+                Add trip
+              </Button>
+            </div>
           </div>
         ) : null}
       </div>
-      <div className="absolute bottom-[var(--space-lg)] left-[var(--space-xl)] z-20 flex items-center gap-[var(--space-md)]">
-        <Button onClick={onAddTrip} variant="primary">
-          Add trip
-        </Button>
-        <Button className="border-dotted border-[var(--color-accent-teal)] text-[var(--color-accent-teal)]" variant="ghost">
-          Share stats
-        </Button>
-      </div>
+      {flights.length > 0 ? (
+        <div className="absolute bottom-[var(--space-lg)] left-[var(--space-xl)] z-20 flex items-center gap-[var(--space-md)]">
+          <Button onClick={onAddTrip} variant="primary">
+            Add trip
+          </Button>
+        </div>
+      ) : null}
       <div className="h-full w-full" ref={containerRef} />
     </section>
   );

@@ -579,32 +579,6 @@ const flights = legs.flatMap((leg, index): FlightInput[] => {
                 tone="light"
                 value={leg.date}
               />
-              <Input
-                className={leg.departureTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]'}
-                label="Departure time"
-                onChange={(event) => updateLeg(leg.id, { departureTime: event.currentTarget.value })}
-                placeholder="Enter time"
-                tone="light"
-                type="time"
-                value={leg.departureTime}
-              />
-              <label className="grid gap-[var(--space-sm)]">
-                <div className="flex items-baseline justify-between">
-                  <span className="label-text text-[var(--color-accent-amber)]">Arrival time</span>
-                  {computeArrivalDayOffset(leg) > 0 && (
-                    <span className="label-text text-[var(--color-accent-teal)]">+{computeArrivalDayOffset(leg)}</span>
-                  )}
-                </div>
-                <input
-                  className={cx(
-                    'h-[var(--control-height)] w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] px-[var(--space-sm)] text-body outline-none transition focus:border-[var(--color-accent-teal)]',
-                    leg.arrivalTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]',
-                  )}
-                  onChange={(event) => updateLeg(leg.id, { arrivalTime: event.currentTarget.value })}
-                  type="time"
-                  value={leg.arrivalTime}
-                />
-              </label>
             </div>
 
             {lookupState?.status === 'loading' ? (
@@ -633,58 +607,95 @@ const flights = legs.flatMap((leg, index): FlightInput[] => {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-[1fr_1fr_1fr] gap-[var(--space-md)]">
-              <div className="grid gap-[var(--space-sm)]">
-                <span className="label-text text-[var(--color-accent-amber)]">Flight duration</span>
-                <div className="flex h-[var(--control-height)] overflow-hidden rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] transition focus-within:border-[var(--color-accent-teal)]">
-                  <input
-                    className="w-16 bg-transparent px-[var(--space-sm)] text-body tabular-nums text-[var(--color-bg-base)] outline-none [appearance:textfield] placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    inputMode="numeric"
-                    maxLength={2}
-                    onChange={(event) => updateLeg(leg.id, { durationHours: normalizeDurationHours(event.currentTarget.value) })}
-                    pattern="[0-9]*"
-                    placeholder="0"
-                    type="text"
-                    value={leg.durationHours}
+            <details className="group rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-bg-surface)] px-[var(--space-md)] py-[var(--space-sm)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-[var(--space-md)] text-body text-[var(--color-text-primary)] [&::-webkit-details-marker]:hidden">
+                <span>Optional details</span>
+                <span className="text-mono text-[var(--color-text-secondary)] group-open:hidden">Add times, aircraft, cabin</span>
+                <span className="hidden text-mono text-[var(--color-text-secondary)] group-open:inline">Hide</span>
+              </summary>
+              <div className="grid gap-[var(--space-md)] pt-[var(--space-md)]">
+                <div className="grid grid-cols-[1fr_1fr] gap-[var(--space-md)]">
+                  <Input
+                    className={leg.departureTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]'}
+                    label="Departure time"
+                    onChange={(event) => updateLeg(leg.id, { departureTime: event.currentTarget.value })}
+                    placeholder="Enter time"
+                    tone="light"
+                    type="time"
+                    value={leg.departureTime}
                   />
-                  <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)]">h</span>
-                  <span className="flex select-none items-center text-[var(--color-bg-surface)]">|</span>
-                  <input
-                    className="w-16 bg-transparent px-[var(--space-sm)] text-body tabular-nums text-[var(--color-bg-base)] outline-none [appearance:textfield] placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    inputMode="numeric"
-                    maxLength={2}
-                    onChange={(event) =>
-                      updateLeg(leg.id, { durationMinutes: normalizeDurationMinutes(event.currentTarget.value, leg.durationMinutes) })
-                    }
-                    pattern="[0-9]*"
-                    placeholder="00"
-                    type="text"
-                    value={leg.durationMinutes}
+                  <label className="grid gap-[var(--space-sm)]">
+                    <div className="flex items-baseline justify-between">
+                      <span className="label-text text-[var(--color-accent-amber)]">Arrival time</span>
+                      {computeArrivalDayOffset(leg) > 0 && (
+                        <span className="label-text text-[var(--color-accent-teal)]">+{computeArrivalDayOffset(leg)}</span>
+                      )}
+                    </div>
+                    <input
+                      className={cx(
+                        'h-[var(--control-height)] w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] px-[var(--space-sm)] text-body outline-none transition focus:border-[var(--color-accent-teal)]',
+                        leg.arrivalTime ? 'text-[var(--color-bg-base)]' : 'text-[var(--color-text-secondary)]',
+                      )}
+                      onChange={(event) => updateLeg(leg.id, { arrivalTime: event.currentTarget.value })}
+                      type="time"
+                      value={leg.arrivalTime}
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-[1fr_1fr_1fr] gap-[var(--space-md)]">
+                  <div className="grid gap-[var(--space-sm)]">
+                    <span className="label-text text-[var(--color-accent-amber)]">Flight duration</span>
+                    <div className="flex h-[var(--control-height)] overflow-hidden rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] transition focus-within:border-[var(--color-accent-teal)]">
+                      <input
+                        className="w-16 bg-transparent px-[var(--space-sm)] text-body tabular-nums text-[var(--color-bg-base)] outline-none [appearance:textfield] placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        inputMode="numeric"
+                        maxLength={2}
+                        onChange={(event) => updateLeg(leg.id, { durationHours: normalizeDurationHours(event.currentTarget.value) })}
+                        pattern="[0-9]*"
+                        placeholder="0"
+                        type="text"
+                        value={leg.durationHours}
+                      />
+                      <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)]">h</span>
+                      <span className="flex select-none items-center text-[var(--color-bg-surface)]">|</span>
+                      <input
+                        className="w-16 bg-transparent px-[var(--space-sm)] text-body tabular-nums text-[var(--color-bg-base)] outline-none [appearance:textfield] placeholder:text-[color-mix(in_srgb,var(--color-text-secondary)_60%,transparent)] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        inputMode="numeric"
+                        maxLength={2}
+                        onChange={(event) =>
+                          updateLeg(leg.id, { durationMinutes: normalizeDurationMinutes(event.currentTarget.value, leg.durationMinutes) })
+                        }
+                        pattern="[0-9]*"
+                        placeholder="00"
+                        type="text"
+                        value={leg.durationMinutes}
+                      />
+                      <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)]">m</span>
+                    </div>
+                  </div>
+                  <TripSelect
+                    label="Aircraft type"
+                    onChange={(event) => updateLeg(leg.id, { aircraftType: event.currentTarget.value })}
+                    options={aircraftOptions}
+                    value={leg.aircraftType}
                   />
-                  <span className="flex select-none items-center pr-[var(--space-sm)] text-body text-[var(--color-bg-base)]">m</span>
+                  <label className="grid gap-[var(--space-sm)]">
+                    <span className="label-text text-[var(--color-accent-amber)]">Cabin class</span>
+                    <select
+                      className="h-[var(--control-height)] w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] px-[var(--space-sm)] text-body text-[var(--color-bg-base)] outline-none transition focus:border-[var(--color-accent-teal)]"
+                      onChange={(event) => updateLeg(leg.id, { seatClass: event.currentTarget.value as SeatClass })}
+                      value={leg.seatClass}
+                    >
+                      {cabinClassOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </div>
-              <TripSelect
-                label="Aircraft type"
-                onChange={(event) => updateLeg(leg.id, { aircraftType: event.currentTarget.value })}
-                options={aircraftOptions}
-                value={leg.aircraftType}
-              />
-              <label className="grid gap-[var(--space-sm)]">
-                <span className="label-text text-[var(--color-accent-amber)]">Cabin class</span>
-                <select
-                  className="h-[var(--control-height)] w-full rounded-[var(--radius-sm)] border border-transparent bg-[var(--color-text-primary)] px-[var(--space-sm)] text-body text-[var(--color-bg-base)] outline-none transition focus:border-[var(--color-accent-teal)]"
-                  onChange={(event) => updateLeg(leg.id, { seatClass: event.currentTarget.value as SeatClass })}
-                  value={leg.seatClass}
-                >
-                  {cabinClassOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
+            </details>
           </section>
           );
         })}
@@ -708,7 +719,7 @@ const flights = legs.flatMap((leg, index): FlightInput[] => {
           onClick={() => setMode('import')}
           variant="ghost"
         >
-          Quick add (upload the flight .csv)
+          Import flights
         </Button>
         <Button disabled={!canSave || isSaving} type="submit" variant="primary">
           Add trip
