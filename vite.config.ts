@@ -319,10 +319,11 @@ function aeroDataBoxLookupPlugin(apiKey: string): Plugin {
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), 'VITE_');
+  const env = loadEnv(mode, process.cwd(), '');
+  const aeroDataBoxKey = env.AERODATABOX_KEY ?? env.VITE_AERODATABOX_KEY ?? '';
 
   return {
-    plugins: [react(), serveVendorAssetsPlugin(), aeroDataBoxLookupPlugin(env.VITE_AERODATABOX_KEY ?? '')],
+    plugins: [react(), serveVendorAssetsPlugin(), aeroDataBoxLookupPlugin(aeroDataBoxKey)],
     server: {
       host: '127.0.0.1',
       port: 5173,
