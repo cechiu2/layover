@@ -1,8 +1,11 @@
-import { ArrowRight, Plus, Trash2, UploadCloud } from 'lucide-react';
+import { ArrowRight, CalendarDays, FileText, Plane, Plus, Trash2, UploadCloud } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type SelectHTMLAttributes } from 'react';
 import { Button } from '../../components/primitives/Button';
 import { Input } from '../../components/primitives/Input';
 import { CSVImport } from '../importFlights/CSVImport';
+import { FlightyImport } from '../importFlights/FlightyImport';
+import { GoogleCalendarImport } from '../importFlights/GoogleCalendarImport';
+import { ICSImport } from '../importFlights/ICSImport';
 import type { Airport } from '../../types/airport';
 import type { FlightInput, SeatClass } from '../../types/flight';
 import { cx } from '../../utils/cx';
@@ -44,6 +47,8 @@ interface LookupState {
   status: 'idle' | 'loading' | 'multiple' | 'not-found' | 'error';
 }
 
+type ImportSource = 'generic' | 'flighty' | 'ics' | 'google';
+
 const aircraftOptions = ['Airbus A321neo', 'Airbus A320', 'Boeing 737', 'Boeing 757', 'Boeing 787', 'Embraer 175'];
 
 const cabinClassOptions: Array<{ label: string; value: SeatClass }> = [
@@ -51,6 +56,38 @@ const cabinClassOptions: Array<{ label: string; value: SeatClass }> = [
   { label: 'Premium economy', value: 'premium_economy' },
   { label: 'Business', value: 'business' },
   { label: 'First', value: 'first' },
+];
+
+const importSources: Array<{
+  description: string;
+  icon: typeof FileText;
+  label: string;
+  value: ImportSource;
+}> = [
+  {
+    description: 'Use the Layover column format.',
+    icon: FileText,
+    label: 'Generic CSV',
+    value: 'generic',
+  },
+  {
+    description: 'Map Flighty export columns automatically.',
+    icon: Plane,
+    label: 'Flighty CSV',
+    value: 'flighty',
+  },
+  {
+    description: 'Parse flight events from calendar files.',
+    icon: CalendarDays,
+    label: 'ICS file',
+    value: 'ics',
+  },
+  {
+    description: 'Scan events from a selected date range.',
+    icon: CalendarDays,
+    label: 'Google Calendar',
+    value: 'google',
+  },
 ];
 
 function createEmptyLeg(previousLeg?: TripLegDraft): TripLegDraft {
@@ -207,6 +244,7 @@ function getLayoverMinutes(previousLeg: TripLegDraft, nextLeg: TripLegDraft): nu
 
 export function AddFlightPanel({ onCancel, onImport, onSave }: AddFlightPanelProps) {
   const [mode, setMode] = useState<'form' | 'import'>('form');
+  const [importSource, setImportSource] = useState<ImportSource>('generic');
   const [legs, setLegs] = useState<TripLegDraft[]>(() => [createEmptyLeg()]);
   const [lookupStates, setLookupStates] = useState<Record<string, LookupState>>({});
   const lookupKeys = useRef<Record<string, string>>({});
@@ -424,9 +462,42 @@ const flights = legs.flatMap((leg, index): FlightInput[] => {
   }
 
   if (mode === 'import') {
+    const importContent = {
+      flighty: <FlightyImport onDone={onCancel} onImport={onImport} />,
+      generic: <CSVImport onDone={onCancel} onImport={onImport} />,
+      google: <GoogleCalendarImport onDone={onCancel} onImport={onImport} />,
+      ics: <ICSImport onDone={onCancel} onImport={onImport} />,
+    } satisfies Record<ImportSource, JSX.Element>;
+
     return (
       <div className="grid gap-[var(--space-lg)]">
-        <CSVImport onDone={onCancel} onImport={onImport} />
+        <div className="grid grid-cols-2 gap-[var(--space-sm)]">
+          {importSources.map((source) => {
+            const Icon = source.icon;
+            const isSelected = importSource === source.value;
+
+            return (
+              <button
+                className={cx(
+                  'grid min-h-[calc(var(--control-height)*2)] gap-[var(--space-xs)] rounded-[var(--radius-md)] border p-[var(--space-sm)] text-left transition',
+                  isSelected
+                    ? 'border-[var(--color-accent-teal)] bg-[var(--color-bg-elevated)] text-[var(--color-text-primary)]'
+                    : 'border-[var(--color-border-default)] bg-[var(--color-bg-base)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent-blue)] hover:text-[var(--color-text-primary)]',
+                )}
+                key={source.value}
+                onClick={() => setImportSource(source.value)}
+                type="button"
+              >
+                <span className="flex items-center gap-[var(--space-sm)] text-body">
+                  <Icon aria-hidden className="h-[var(--icon-size-sm)] w-[var(--icon-size-sm)]" />
+                  {source.label}
+                </span>
+                <span className="text-mono">{source.description}</span>
+              </button>
+            );
+          })}
+        </div>
+        {importContent[importSource]}
         <div className="flex justify-start">
           <Button onClick={() => setMode('form')} variant="ghost">
             Back to form

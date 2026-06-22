@@ -159,7 +159,7 @@ Many calendar apps (Apple Calendar, Outlook, Google Calendar export) can export 
 
 ---
 
-## Task H — Route-grouped flight cards
+## Task H — Route-grouped flight cards  ✓ (implemented)
 
 **What:** When a user clicks on a flight entry in the flight log, show a route card that aggregates all flights on that same route — instead of a separate card per individual flight.
 

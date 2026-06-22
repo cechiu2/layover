@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Button } from '../components/primitives/Button';
 import type { Airport } from '../types/airport';
 import type { Flight } from '../types/flight';
+import { getRouteKey } from '../utils/routeKey';
 
 const earthNightUrl = '/vendor/earth-night.jpg';
 const earthTopologyUrl = '/vendor/earth-topology.png';
@@ -98,7 +99,9 @@ interface GlobeCanvasProps {
 }
 
 interface GlobeArc {
+  flightId: string;
   id: string;
+  routeKey: string;
   startLat: number;
   startLng: number;
   endLat: number;
@@ -117,7 +120,9 @@ function getToken(name: string): string {
 
 function toArc(flight: Flight): GlobeArc {
   return {
-    id: flight.id,
+    flightId: flight.id,
+    id: getRouteKey(flight),
+    routeKey: getRouteKey(flight),
     startLat: flight.origin.lat,
     startLng: flight.origin.lon,
     endLat: flight.destination.lat,
@@ -133,6 +138,25 @@ function toPoint(airport: Airport): GlobePoint {
   };
 }
 
+function getFlightDateTime(flight: Flight): number {
+  return new Date(flight.date).getTime();
+}
+
+function getRouteArcs(flights: Flight[]): GlobeArc[] {
+  const routeFlights = new Map<string, Flight>();
+
+  flights.forEach((flight) => {
+    const routeKey = getRouteKey(flight);
+    const existingFlight = routeFlights.get(routeKey);
+
+    if (!existingFlight || getFlightDateTime(flight) > getFlightDateTime(existingFlight)) {
+      routeFlights.set(routeKey, flight);
+    }
+  });
+
+  return Array.from(routeFlights.values()).map(toArc);
+}
+
 function applyGlobeData(
   globe: GlobeInstance,
   arcs: GlobeArc[],
@@ -143,21 +167,23 @@ function applyGlobeData(
   const accentBlue = getToken('--color-accent-blue');
   const accentAmber = getToken('--color-accent-amber');
   const accentTeal = getToken('--color-accent-teal');
+  const activeFlight = flights.find((flight) => flight.id === activeFlightId);
+  const activeRouteKey = activeFlight ? getRouteKey(activeFlight) : null;
 
   globe
     .arcsData(arcs)
     .arcColor((arc) => {
       const globeArc = arc as GlobeArc;
-      return globeArc.id === activeFlightId ? [accentTeal, accentBlue] : [accentBlue, accentAmber];
+      return globeArc.routeKey === activeRouteKey ? [accentTeal, accentBlue] : [accentBlue, accentAmber];
     })
-    .arcAltitude((arc) => ((arc as GlobeArc).id === activeFlightId ? 0.28 : 0.18))
-    .arcStroke((arc) => ((arc as GlobeArc).id === activeFlightId ? 0.8 : 0.38))
+    .arcAltitude((arc) => ((arc as GlobeArc).routeKey === activeRouteKey ? 0.28 : 0.18))
+    .arcStroke((arc) => ((arc as GlobeArc).routeKey === activeRouteKey ? 0.8 : 0.38))
     .pointsData(points)
     .pointColor((point) => {
       const globePoint = point as GlobePoint;
       const touchesActiveFlight = flights.some(
         (flight) =>
-          flight.id === activeFlightId &&
+          getRouteKey(flight) === activeRouteKey &&
           (flight.origin.iata === globePoint.id || flight.destination.iata === globePoint.id),
       );
       return touchesActiveFlight ? accentTeal : accentAmber;
@@ -176,7 +202,7 @@ export function GlobeCanvas({
   const onArcHoverRef = useRef(onArcHover);
   const onArcSelectRef = useRef(onArcSelect);
 
-  const arcs = useMemo(() => flights.map(toArc), [flights]);
+  const arcs = useMemo(() => getRouteArcs(flights), [flights]);
   const points = useMemo(() => {
     const visitedAirports = new Map<string, Airport>();
 
@@ -263,8 +289,8 @@ export function GlobeCanvas({
           .pointAltitude(0.012)
           .pointRadius(0.18)
           .pointsMerge(true)
-          .onArcClick((arc) => onArcSelectRef.current((arc as GlobeArc).id))
-          .onArcHover((arc) => onArcHoverRef.current(arc ? (arc as GlobeArc).id : null));
+          .onArcClick((arc) => onArcSelectRef.current((arc as GlobeArc).flightId))
+          .onArcHover((arc) => onArcHoverRef.current(arc ? (arc as GlobeArc).flightId : null));
 
         resizeObserver = new ResizeObserver(([entry]) => {
           const { height, width } = entry.contentRect;

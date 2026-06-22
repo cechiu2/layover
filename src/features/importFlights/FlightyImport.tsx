@@ -2,61 +2,26 @@ import Papa from 'papaparse';
 import { useState } from 'react';
 import { DragDropZone } from '../../components/primitives/DragDropZone';
 import type { FlightInput } from '../../types/flight';
-import { buildImportRow, normalizeSeatClass } from './importValidation';
 import { ImportPreview, type ImportRow } from './ImportPreview';
 import { ImportSuccess } from './ImportSuccess';
+import { parseFlightyRows, type FlightyRow } from './parseFlighty';
 
-interface CSVImportProps {
+interface FlightyImportProps {
   onDone: () => void;
   onImport: (flights: FlightInput[]) => Promise<void>;
 }
 
-interface CsvRow {
-  aircraft_type?: string;
-  airline?: string;
-  arrival_time?: string;
-  date?: string;
-  departure_time?: string;
-  destination?: string;
-  flight_duration?: string;
-  flight_number?: string;
-  origin?: string;
-  seat_class?: string;
-  [key: string]: string | undefined;
-}
-
 type ImportStep = 'drop' | 'preview' | 'success';
 
-function validateRow(row: CsvRow, index: number): ImportRow {
-  const seatClass = normalizeSeatClass(row.seat_class);
-
-  return buildImportRow(
-    {
-      aircraftType: row.aircraft_type,
-      airline: row.airline,
-      arrivalTime: row.arrival_time,
-      date: row.date,
-      departureTime: row.departure_time,
-      destinationCode: row.destination,
-      flightDuration: row.flight_duration,
-      flightNumber: row.flight_number,
-      originCode: row.origin,
-      seatClass,
-    },
-    index + 2,
-    row.seat_class && !seatClass ? ['Invalid class'] : [],
-  );
-}
-
-export function CSVImport({ onDone, onImport }: CSVImportProps) {
+export function FlightyImport({ onDone, onImport }: FlightyImportProps) {
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [importedCount, setImportedCount] = useState(0);
   const [step, setStep] = useState<ImportStep>('drop');
 
   function parseFile(file: File) {
-    Papa.parse<CsvRow>(file, {
+    Papa.parse<FlightyRow>(file, {
       complete(results) {
-        setRows(results.data.map(validateRow));
+        setRows(parseFlightyRows(results.data));
         setStep('preview');
       },
       header: true,
@@ -82,8 +47,8 @@ export function CSVImport({ onDone, onImport }: CSVImportProps) {
     <div className="grid gap-[var(--space-lg)]">
       <DragDropZone onFiles={(files) => files[0] && parseFile(files[0])} />
       <div className="rounded-[var(--radius-md)] border border-[var(--color-border-default)] bg-[var(--color-bg-elevated)] p-[var(--space-md)]">
-        <p className="break-all font-mono text-mono text-[var(--color-text-secondary)]">
-          origin,destination,date,airline,flight_number,seat_class,aircraft_type,departure_time,arrival_time,flight_duration
+        <p className="text-body text-[var(--color-text-secondary)]">
+          Flighty export columns are mapped automatically, including cabin, aircraft, local times, and flight number.
         </p>
       </div>
     </div>

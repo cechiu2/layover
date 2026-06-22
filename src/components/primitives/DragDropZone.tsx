@@ -4,10 +4,11 @@ import { cx } from '../../utils/cx';
 
 interface DragDropZoneProps {
   accept?: string;
+  label?: string;
   onFiles: (files: File[]) => void;
 }
 
-export function DragDropZone({ accept = '.csv,text/csv', onFiles }: DragDropZoneProps) {
+export function DragDropZone({ accept = '.csv,text/csv', label = 'CSV file', onFiles }: DragDropZoneProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -39,7 +40,7 @@ export function DragDropZone({ accept = '.csv,text/csv', onFiles }: DragDropZone
       type="button"
     >
       <UploadCloud aria-hidden className="h-[var(--icon-size-lg)] w-[var(--icon-size-lg)]" />
-      <span className="text-heading-sm">CSV file</span>
+      <span className="text-heading-sm">{label}</span>
       <input
         accept={accept}
         className="hidden"
