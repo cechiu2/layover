@@ -2,7 +2,21 @@ import { createClient, type User } from '@supabase/supabase-js';
 import type { Airport } from '../types/airport';
 import type { Flight } from '../types/flight';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+function normalizeSupabaseUrl(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+
+  try {
+    const url = new URL(value);
+    url.pathname = url.pathname.replace(/\/rest\/v1\/?$/, '');
+    url.search = '';
+    url.hash = '';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return value.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+  }
+}
+
+const supabaseUrl = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL as string | undefined);
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
